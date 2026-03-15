@@ -16,9 +16,9 @@ def get_usage_stats():
             "SELECT COALESCE(SUM(token_usage), 0) FROM generations WHERE status = 'completed'"
         ).fetchone()[0]
 
-        # Other API call tokens (extraction, etc.)
+        # Other API call tokens (extraction, embedding — exclude question_generation to avoid double-counting)
         other_tokens = db.execute(
-            "SELECT COALESCE(SUM(token_usage), 0) FROM api_calls"
+            "SELECT COALESCE(SUM(token_usage), 0) FROM api_calls WHERE call_type != 'question_generation'"
         ).fetchone()[0]
 
         total_tokens = gen_tokens + other_tokens
@@ -28,9 +28,9 @@ def get_usage_stats():
             "SELECT COUNT(*) FROM generations WHERE status = 'completed'"
         ).fetchone()[0]
 
-        # Total other API calls
+        # Total other API calls (exclude question_generation to avoid double-counting with generations)
         total_other = db.execute(
-            "SELECT COUNT(*) FROM api_calls"
+            "SELECT COUNT(*) FROM api_calls WHERE call_type != 'question_generation'"
         ).fetchone()[0]
 
         # Today's usage (both sources)
@@ -40,7 +40,7 @@ def get_usage_stats():
             (today,)
         ).fetchone()[0]
         today_other_tokens = db.execute(
-            "SELECT COALESCE(SUM(token_usage), 0) FROM api_calls WHERE DATE(created_at) = DATE(?)",
+            "SELECT COALESCE(SUM(token_usage), 0) FROM api_calls WHERE call_type != 'question_generation' AND DATE(created_at) = DATE(?)",
             (today,)
         ).fetchone()[0]
 
@@ -54,7 +54,7 @@ def get_usage_stats():
         ).fetchall()
         other_history = db.execute(
             """SELECT DATE(created_at) as date, SUM(token_usage) as tokens, COUNT(*) as count
-               FROM api_calls WHERE created_at > ?
+               FROM api_calls WHERE call_type != 'question_generation' AND created_at > ?
                GROUP BY DATE(created_at)""",
             (seven_days_ago,)
         ).fetchall()
@@ -79,9 +79,14 @@ def get_usage_stats():
             "SELECT COUNT(*) FROM generations WHERE status = 'failed'"
         ).fetchone()[0]
 
-        # API call breakdown
+        # Task breakdown (exclude question_generation — already covered by provider_breakdown from generations)
         call_breakdown = db.execute(
-            "SELECT call_type, COUNT(*) as count, SUM(token_usage) as tokens FROM api_calls GROUP BY call_type"
+            "SELECT call_type, provider, COUNT(*) as count, SUM(token_usage) as tokens FROM api_calls WHERE call_type != 'question_generation' GROUP BY call_type, provider"
+        ).fetchall()
+
+        # Provider breakdown across generations
+        provider_breakdown = db.execute(
+            "SELECT provider, COUNT(*) as count, SUM(token_usage) as tokens FROM generations WHERE status = 'completed' GROUP BY provider"
         ).fetchall()
 
     return {
@@ -92,7 +97,8 @@ def get_usage_stats():
         "today_tokens": today_gen_tokens + today_other_tokens,
         "failed_generations": failed,
         "daily_history": daily_history,
-        "call_breakdown": [{"type": r[0], "count": r[1], "tokens": r[2]} for r in call_breakdown],
+        "call_breakdown": [{"type": r[0], "provider": r[1], "count": r[2], "tokens": r[3]} for r in call_breakdown],
+        "provider_breakdown": [{"provider": r[0], "count": r[1], "tokens": r[2]} for r in provider_breakdown],
         "note": "Gemini free tier: 1500 req/day, 1M tokens/min. Check https://aistudio.google.com/app/apikey for exact quota.",
     }
 
