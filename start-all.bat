@@ -8,22 +8,22 @@ echo ===========================================
 echo.
 
 REM Kill existing processes on ports 8000 and 3000
-echo [1/4] Cleaning up existing processes...
+echo [1/6] Cleaning up existing processes...
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8000') do taskkill /PID %%a /F 2>nul
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr :3000') do taskkill /PID %%a /F 2>nul
 timeout /t 1 /nobreak >nul
 
-REM Check Python and dependencies
-echo [2/4] Checking Python environment...
+REM Check Python
+echo [2/6] Checking Python environment...
 python --version >nul 2>&1
 if errorlevel 1 (
-    echo [ERROR] Python not found. Please install Python first.
+    echo [ERROR] Python not found. Please install Python 3.10+ first.
     pause
     exit /b 1
 )
 
 REM Check Node.js
-echo [3/4] Checking Node.js environment...
+echo [3/6] Checking Node.js environment...
 node --version >nul 2>&1
 if errorlevel 1 (
     echo [ERROR] Node.js not found. Please install Node.js first.
@@ -31,8 +31,40 @@ if errorlevel 1 (
     exit /b 1
 )
 
+REM Check .env
+echo [4/6] Checking backend .env...
+if not exist "%~dp0backend\.env" (
+    echo [ERROR] backend\.env not found.
+    echo        Copy backend\.env.example to backend\.env and add your GEMINI_API_KEY.
+    pause
+    exit /b 1
+)
+
+REM Install backend dependencies
+echo [5/6] Installing backend dependencies...
+cd /d "%~dp0backend"
+pip install -r requirements.txt -q 2>nul
+if errorlevel 1 (
+    echo [WARN] pip install had issues, continuing anyway...
+)
+
+REM Install frontend dependencies
+echo [6/6] Installing frontend dependencies...
+cd /d "%~dp0frontend"
+if not exist "node_modules" (
+    echo        node_modules not found, running npm install...
+    call npm install
+    if errorlevel 1 (
+        echo [ERROR] npm install failed.
+        pause
+        exit /b 1
+    )
+) else (
+    echo        node_modules found, skipping npm install.
+)
+
 echo.
-echo [4/4] Starting services...
+echo Starting services...
 echo.
 
 REM Start Backend in new window
