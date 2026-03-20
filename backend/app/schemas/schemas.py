@@ -15,6 +15,7 @@ class GenerateRequest(BaseModel):
     num_questions: int = 10
     question_types: list[str] = ["mcq"]
     language: Optional[str] = None
+    difficulty_distribution: Optional[dict[str, int]] = None
 
 
 class BatchJobCreate(BaseModel):

@@ -1,4 +1,5 @@
 import json
+import re
 import hashlib
 import httpx
 
@@ -51,11 +52,30 @@ Return a JSON array of objects with this exact structure:
     "options": ["A. ...", "B. ...", "C. ...", "D. ..."],
     "answer": "The correct answer",
     "explanation": "Brief explanation referencing the source material",
-    "difficulty": "easy|medium|hard"
+    "difficulty": "easy|medium|hard",
+    "bloom_level": "remember|understand|apply|analyze|evaluate|create"
   }
 ]
 For non-MCQ questions, "options" should be an empty array.
+Bloom's Taxonomy levels:
+- remember: Recall facts and basic concepts (define, list, name, identify)
+- understand: Explain ideas or concepts (explain, summarize, classify, compare)
+- apply: Use information in new situations (apply, solve, implement, demonstrate)
+- analyze: Draw connections among ideas (analyze, differentiate, examine, categorize)
+- evaluate: Justify a decision or position (evaluate, critique, assess, argue)
+- create: Produce new or original work (design, develop, construct, propose)
 """
+
+BLOOM_DIFFICULTY_MAP = {
+    "remember": "easy",
+    "understand": "easy",
+    "apply": "medium",
+    "analyze": "hard",
+    "evaluate": "hard",
+    "create": "hard",
+}
+
+VALID_BLOOM_LEVELS = set(BLOOM_DIFFICULTY_MAP.keys())
 
 
 def _build_prompt(
@@ -64,6 +84,7 @@ def _build_prompt(
     question_types: list[str],
     language: str,
     pattern: dict | None,
+    difficulty_distribution: dict | None = None,
 ) -> str:
     context = "\n\n---\n\n".join(chunks[:10])
 
@@ -75,10 +96,23 @@ def _build_prompt(
         f"- Language: {language}",
     ]
 
+    # Manual difficulty distribution takes precedence over pattern
+    if difficulty_distribution:
+        parts.append(f"\n## Difficulty Distribution (MUST follow exactly)")
+        for level, pct in difficulty_distribution.items():
+            count = round(num_questions * pct / 100)
+            parts.append(f"- {level}: {pct}% (~{count} questions)")
+        parts.append("- Distribute the questions to match these percentages as closely as possible.")
+    elif pattern:
+        config = pattern.get("pattern_config", {})
+        diff_dist = config.get('difficulty_distribution', {})
+        if diff_dist:
+            parts.append(f"\n## Difficulty Distribution")
+            parts.append(f"- Difficulty distribution: {json.dumps(diff_dist)}")
+
     if pattern:
         config = pattern.get("pattern_config", {})
         parts.append(f"\n## Pattern Requirements")
-        parts.append(f"- Difficulty distribution: {json.dumps(config.get('difficulty_distribution', {}))}")
         parts.append(f"- Question type distribution: {json.dumps(config.get('question_types', {}))}")
         parts.append(f"- Average question length: ~{config.get('avg_length', 50)} words")
 
@@ -93,26 +127,14 @@ def _build_prompt(
     return "\n".join(parts)
 
 
-def _parse_response(text: str) -> list[dict]:
-    text = text.strip()
-    if text.startswith("```"):
-        text = text.split("\n", 1)[1] if "\n" in text else text[3:]
-        if text.endswith("```"):
-            text = text[:-3]
-        text = text.strip()
-
-    try:
-        questions = json.loads(text)
-    except json.JSONDecodeError:
-        start = text.find("[")
-        end = text.rfind("]") + 1
-        if start != -1 and end > start:
-            questions = json.loads(text[start:end])
-        else:
-            raise ValueError("Could not parse questions from AI response")
-
+def _validate_questions(questions: list) -> list[dict]:
+    """Normalize and validate raw parsed question dicts from AI output."""
     validated = []
     for i, q in enumerate(questions):
+        bloom = q.get("bloom_level", "").lower()
+        if bloom not in VALID_BLOOM_LEVELS:
+            diff = q.get("difficulty", "medium")
+            bloom = {"easy": "remember", "medium": "apply", "hard": "analyze"}.get(diff, "apply")
         validated.append({
             "id": i + 1,
             "type": q.get("type", "mcq"),
@@ -121,8 +143,98 @@ def _parse_response(text: str) -> list[dict]:
             "answer": q.get("answer", ""),
             "explanation": q.get("explanation", ""),
             "difficulty": q.get("difficulty", "medium"),
+            "bloom_level": bloom,
         })
     return validated
+
+
+def _parse_response(text: str) -> list[dict]:
+    """Parse LLM response to a list of question dicts. Handles various markdown/formatting issues."""
+    import logging
+    logger = logging.getLogger(__name__)
+
+    raw_text = text  # keep original for debug
+    text = text.strip()
+
+    # Strip markdown code fences: ```json ... ``` or ``` ... ```
+    if text.startswith("```"):
+        first_newline = text.find("\n")
+        if first_newline != -1:
+            text = text[first_newline + 1:]
+        else:
+            text = text[3:]
+        if text.rstrip().endswith("```"):
+            text = text.rstrip()[:-3].rstrip()
+        text = text.strip()
+
+    # Strategy 1: direct parse
+    try:
+        return _validate_questions(json.loads(text))
+    except (json.JSONDecodeError, ValueError) as e:
+        logger.warning(f"Strategy 1 failed: {e}")
+
+    # Strategy 2: extract from first '[' to matching ']' using bracket-depth walker
+    start = text.find("[")
+    if start != -1:
+        depth = 0
+        end = -1
+        in_string = False
+        escape = False
+        for i, ch in enumerate(text[start:], start):
+            if escape:
+                escape = False
+                continue
+            if ch == "\\" and in_string:
+                escape = True
+                continue
+            if ch == "\"":
+                in_string = not in_string
+                continue
+            if in_string:
+                continue
+            if ch == "[":
+                depth += 1
+            elif ch == "]":
+                depth -= 1
+                if depth == 0:
+                    end = i + 1
+                    break
+
+        if end != -1:
+            extracted = text[start:end]
+            try:
+                return _validate_questions(json.loads(extracted))
+            except (json.JSONDecodeError, ValueError) as e:
+                logger.warning(f"Strategy 2 failed: {e}")
+
+                # Strategy 3: fix common JSON issues (trailing commas, etc.)
+                cleaned = re.sub(r",\s*([\]\}])", r"\1", extracted)  # remove trailing commas
+                cleaned = re.sub(r"//.*$", "", cleaned, flags=re.MULTILINE)  # remove JS comments
+                try:
+                    return _validate_questions(json.loads(cleaned))
+                except (json.JSONDecodeError, ValueError) as e2:
+                    logger.warning(f"Strategy 3 failed: {e2}")
+
+    # Log first 2000 chars of the raw response for debugging
+    logger.error(f"All parse strategies failed. Raw response (first 2000 chars):\n{raw_text[:2000]}")
+
+    # Strategy 4: salvage truncated JSON — find last complete object in a cut-off array
+    if start != -1:
+        last_close = text.rfind("}")
+        if last_close > start:
+            candidate = text[start:last_close + 1] + "]"
+            # Remove trailing commas before the added ']'
+            candidate = re.sub(r",\s*\]", "]", candidate)
+            try:
+                result = _validate_questions(json.loads(candidate))
+                if result:
+                    logger.info(f"Strategy 4 salvaged {len(result)} questions from truncated response")
+                    return result
+            except (json.JSONDecodeError, ValueError) as e:
+                logger.warning(f"Strategy 4 failed: {e}")
+
+    raise ValueError("Could not parse questions from AI response")
+
 
 
 async def _call_gemini(system_prompt: str, user_prompt: str) -> tuple[str, int]:
@@ -134,13 +246,13 @@ async def _call_gemini(system_prompt: str, user_prompt: str) -> tuple[str, int]:
             {"role": "user", "parts": [{"text": user_prompt}]}
         ],
         "generationConfig": {
-            "maxOutputTokens": 4096,
+            "maxOutputTokens": 16384,
             "temperature": 0.7,
         },
     }
 
     url = f"{GEMINI_BASE}/{GEMINI_MODEL}:generateContent"
-    async with httpx.AsyncClient(timeout=60.0) as client:
+    async with httpx.AsyncClient(timeout=120.0) as client:
         resp = await client.post(
             url,
             params={"key": GEMINI_API_KEY},
@@ -173,11 +285,11 @@ async def _call_groq(system_prompt: str, user_prompt: str) -> tuple[str, int]:
             {"role": "user", "content": user_prompt},
         ],
         "temperature": 0.7,
-        "max_tokens": 4096,
+        "max_tokens": 16384,
     }
 
     url = f"{GROQ_BASE}/chat/completions"
-    async with httpx.AsyncClient(timeout=60.0) as client:
+    async with httpx.AsyncClient(timeout=120.0) as client:
         resp = await client.post(
             url,
             headers=headers,
@@ -227,13 +339,14 @@ async def generate_questions(
     question_types: list[str] | None = None,
     language: str = "en",
     pattern: dict | None = None,
+    difficulty_distribution: dict | None = None,
 ) -> tuple[list[dict], str, int, str]:
     """Generate questions. Returns (questions, prompt, tokens, provider)."""
     if question_types is None:
         question_types = ["mcq"]
 
     relevant = await select_relevant_chunks(document_id, chunks, max_chunks=8)
-    prompt = _build_prompt(relevant, num_questions, question_types, language, pattern)
+    prompt = _build_prompt(relevant, num_questions, question_types, language, pattern, difficulty_distribution)
 
     cache_key = hashlib.md5(prompt.encode()).hexdigest()
     if cache_key in _cache:

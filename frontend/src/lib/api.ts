@@ -41,6 +41,7 @@ export interface QuestionItem {
   answer: string;
   explanation: string;
   difficulty: string;
+  bloom_level: string;
 }
 
 export interface GenerationItem {
@@ -105,6 +106,7 @@ export const api = {
     num_questions?: number;
     question_types?: string[];
     language?: string;
+    difficulty_distribution?: Record<string, number>;
   }): Promise<GenerationItem> {
     return request("/generations/", {
       method: "POST",
