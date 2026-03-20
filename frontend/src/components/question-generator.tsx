@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Progress, ProgressLabel, ProgressValue } from "@/components/ui/progress";
 import { api, DocumentItem, PatternItem, GenerationItem, QuestionItem } from "@/lib/api";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { toast } from "sonner";
@@ -26,6 +27,194 @@ const QUESTION_TYPES = [
   { value: "fill_blank", label: "Fill in the Blank" },
   { value: "essay", label: "Essay" },
 ];
+
+// ── Bloom's Taxonomy Helpers ──────────────────────────────────────────────
+
+const BLOOM_LEVELS: Record<string, { label: string; color: string; group: string; description: string }> = {
+  remember:    { label: "Remember",    color: "bg-emerald-100 text-emerald-700 border-emerald-300",   group: "Easy",   description: "Recall facts and basic concepts — define, list, name, identify" },
+  understand:  { label: "Understand",  color: "bg-teal-100 text-teal-700 border-teal-300",           group: "Easy",   description: "Explain ideas or concepts — explain, summarize, classify, compare" },
+  apply:       { label: "Apply",       color: "bg-amber-100 text-amber-700 border-amber-300",        group: "Medium", description: "Use information in new situations — apply, solve, implement, demonstrate" },
+  analyze:     { label: "Analyze",     color: "bg-violet-100 text-violet-700 border-violet-300",     group: "Hard",   description: "Draw connections among ideas — analyze, differentiate, examine, categorize" },
+  evaluate:    { label: "Evaluate",    color: "bg-rose-100 text-rose-700 border-rose-300",           group: "Hard",   description: "Justify a decision or position — evaluate, critique, assess, argue" },
+  create:      { label: "Create",      color: "bg-fuchsia-100 text-fuchsia-700 border-fuchsia-300",  group: "Hard",   description: "Produce new or original work — design, develop, construct, propose" },
+};
+
+function BloomBadge({ level }: { level: string }) {
+  const info = BLOOM_LEVELS[level] || BLOOM_LEVELS.apply;
+  return (
+    <span className="relative group/bloom">
+      <Badge variant="outline" className={`${info.color} cursor-help text-xs`}>
+        {info.label}
+      </Badge>
+      <span className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/bloom:block w-64 rounded-lg border bg-popover p-3 text-xs text-popover-foreground shadow-lg">
+        <span className="font-semibold">{info.label}</span>
+        <span className="text-muted-foreground ml-1">({info.group})</span>
+        <br />
+        <span className="text-muted-foreground mt-1 block">{info.description}</span>
+      </span>
+    </span>
+  );
+}
+
+// ── Grounding Benchmark Component ─────────────────────────────────────────
+
+function GroundingBenchmark({ evaluation }: {
+  evaluation: {
+    overall_score: number;
+    well_grounded_pct: number;
+    well_grounded_count: number;
+    total_questions: number;
+    summary: string;
+    details: { question_id: number; grounding_score: number; status: string }[];
+  };
+}) {
+  const pct = evaluation.well_grounded_pct;
+  const tier = pct >= 70 ? "good" : pct >= 50 ? "acceptable" : "poor";
+
+  const config = {
+    good:       { label: "Good / Reliable",               color: "text-emerald-600", bg: "bg-emerald-500", trackBg: "bg-emerald-100", border: "border-emerald-200" },
+    acceptable: { label: "Acceptable / Needs minor review", color: "text-amber-600",   bg: "bg-amber-500",   trackBg: "bg-amber-100",   border: "border-amber-200" },
+    poor:       { label: "Review needed / Low cohesion",    color: "text-red-600",     bg: "bg-red-500",     trackBg: "bg-red-100",     border: "border-red-200" },
+  }[tier];
+
+  return (
+    <div className={`mb-5 rounded-xl border ${config.border} bg-gradient-to-r from-background to-muted/30 p-5`}>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold">Grounding Benchmark</span>
+          <span className="relative group/info">
+            <svg className="h-4 w-4 text-muted-foreground cursor-help" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+            </svg>
+            <span className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/info:block w-72 rounded-lg border bg-popover p-3 text-xs text-popover-foreground shadow-lg">
+              <span className="font-semibold">What is Grounding Benchmark?</span>
+              <br />
+              <span className="text-muted-foreground mt-1 block">
+                Measures how well generated questions are grounded in the source document.
+                Higher scores mean the questions are more faithful to the original material.
+              </span>
+              <span className="text-muted-foreground mt-1 block">
+                • ≥70%: Good — questions are reliable<br/>
+                • 50–69%: Acceptable — minor review needed<br/>
+                • &lt;50%: Low — significant review needed
+              </span>
+            </span>
+          </span>
+        </div>
+        <Badge variant="outline" className={config.color}>
+          {config.label}
+        </Badge>
+      </div>
+
+      <Progress value={pct} className="mb-3">
+        <ProgressLabel className={config.color}>{pct}% grounded</ProgressLabel>
+        <ProgressValue />
+      </Progress>
+
+      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+        <span>{evaluation.well_grounded_count}/{evaluation.total_questions} questions well-grounded</span>
+        <span>•</span>
+        <span>Avg overlap: {Math.round(evaluation.overall_score * 100)}%</span>
+      </div>
+      <p className="text-xs text-muted-foreground mt-2">{evaluation.summary}</p>
+    </div>
+  );
+}
+
+// ── Difficulty Distribution Slider ────────────────────────────────────────
+
+function DifficultySliders({
+  distribution,
+  onChange,
+  enabled,
+  onEnabledChange,
+}: {
+  distribution: { easy: number; medium: number; hard: number };
+  onChange: (d: { easy: number; medium: number; hard: number }) => void;
+  enabled: boolean;
+  onEnabledChange: (v: boolean) => void;
+}) {
+  const total = distribution.easy + distribution.medium + distribution.hard;
+  const isValid = total === 100;
+
+  const handleChange = (key: "easy" | "medium" | "hard", value: number) => {
+    onChange({ ...distribution, [key]: Math.max(0, Math.min(100, value)) });
+  };
+
+  return (
+    <div className="space-y-3 rounded-lg border p-4">
+      <div className="flex items-center justify-between">
+        <Label className="text-sm font-medium">Difficulty Distribution</Label>
+        <label className="flex items-center gap-2 text-xs cursor-pointer">
+          <input
+            type="checkbox"
+            checked={enabled}
+            onChange={(e) => onEnabledChange(e.target.checked)}
+            className="rounded border-input"
+          />
+          Manual
+        </label>
+      </div>
+
+      {enabled && (
+        <>
+          <p className="text-xs text-muted-foreground">
+            Set the percentage of Easy / Medium / Hard questions. Total must equal 100%.
+          </p>
+          <div className="grid grid-cols-3 gap-3">
+            {(["easy", "medium", "hard"] as const).map((key) => {
+              const colors: Record<string, string> = {
+                easy: "text-emerald-600",
+                medium: "text-amber-600",
+                hard: "text-red-600",
+              };
+              return (
+                <div key={key} className="space-y-1">
+                  <label className={`text-xs font-medium capitalize ${colors[key]}`}>{key}</label>
+                  <div className="flex items-center gap-1">
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={distribution[key]}
+                      onChange={(e) => handleChange(key, Number(e.target.value) || 0)}
+                      className="h-8 text-center text-sm"
+                    />
+                    <span className="text-xs text-muted-foreground">%</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="flex gap-1">
+              {[
+                { easy: 40, medium: 40, hard: 20 },
+                { easy: 30, medium: 40, hard: 30 },
+                { easy: 20, medium: 30, hard: 50 },
+              ].map((preset, i) => (
+                <Button
+                  key={i}
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-[10px] px-2"
+                  onClick={() => onChange(preset)}
+                >
+                  {preset.easy}/{preset.medium}/{preset.hard}
+                </Button>
+              ))}
+            </div>
+            <span className={`text-xs font-medium ${isValid ? "text-emerald-600" : "text-red-500"}`}>
+              Total: {total}%{!isValid && " ≠ 100%"}
+            </span>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Main Component ────────────────────────────────────────────────────────
 
 export function QuestionGenerator({ onGenerated }: { onGenerated?: () => void }) {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
@@ -39,11 +228,20 @@ export function QuestionGenerator({ onGenerated }: { onGenerated?: () => void })
   const [result, setResult] = useState<GenerationItem | null>(null);
   const [evaluation, setEvaluation] = useState<{
     overall_score: number;
+    well_grounded_count: number;
+    total_questions: number;
     well_grounded_pct: number;
     summary: string;
     details: { question_id: number; grounding_score: number; status: string }[];
   } | null>(null);
   const [evaluating, setEvaluating] = useState(false);
+
+  // Difficulty distribution state
+  const [diffEnabled, setDiffEnabled] = useState(false);
+  const [diffDistribution, setDiffDistribution] = useState({ easy: 40, medium: 40, hard: 20 });
+
+  const diffTotal = diffDistribution.easy + diffDistribution.medium + diffDistribution.hard;
+  const diffValid = !diffEnabled || diffTotal === 100;
 
   const loadData = useCallback(async () => {
     try {
@@ -68,6 +266,7 @@ export function QuestionGenerator({ onGenerated }: { onGenerated?: () => void })
   const handleGenerate = async () => {
     if (!selectedDoc) return toast.error("Select a document first");
     if (selectedTypes.length === 0) return toast.error("Select at least one question type");
+    if (!diffValid) return toast.error("Difficulty distribution must total 100%");
 
     setGenerating(true);
     setResult(null);
@@ -79,6 +278,7 @@ export function QuestionGenerator({ onGenerated }: { onGenerated?: () => void })
         num_questions: numQuestions,
         question_types: selectedTypes,
         language: language === "auto" ? undefined : language,
+        difficulty_distribution: diffEnabled ? diffDistribution : undefined,
       });
       setResult(gen);
       toast.success(`Generated ${gen.questions.length} questions`);
@@ -107,7 +307,7 @@ export function QuestionGenerator({ onGenerated }: { onGenerated?: () => void })
     if (!result) return;
     const text = result.questions
       .map((q: QuestionItem, i: number) => {
-        let out = `${i + 1}. [${q.type.toUpperCase()}] ${q.question}`;
+        let out = `${i + 1}. [${q.type.toUpperCase()}] [${(q.bloom_level || "").toUpperCase()}] ${q.question}`;
         if (q.options.length) out += "\n" + q.options.join("\n");
         out += `\nAnswer: ${q.answer}`;
         if (q.explanation) out += `\nExplanation: ${q.explanation}`;
@@ -208,7 +408,15 @@ export function QuestionGenerator({ onGenerated }: { onGenerated?: () => void })
             </Select>
           </div>
 
-          <Button onClick={handleGenerate} disabled={generating} className="w-full">
+          {/* ── Task 2: Manual Difficulty Distribution ── */}
+          <DifficultySliders
+            distribution={diffDistribution}
+            onChange={setDiffDistribution}
+            enabled={diffEnabled}
+            onEnabledChange={setDiffEnabled}
+          />
+
+          <Button onClick={handleGenerate} disabled={generating || !diffValid} className="w-full">
             {generating ? (
               <span className="flex items-center gap-2">
                 <LoadingSpinner className="h-4 w-4" />
@@ -265,21 +473,16 @@ export function QuestionGenerator({ onGenerated }: { onGenerated?: () => void })
             </div>
           ) : (
             <ScrollArea className="h-[600px] pr-4">
-              {evaluation && (
-                <div className="mb-4 rounded-lg border bg-muted/50 p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium">Accuracy Evaluation</span>
-                    <Badge variant={evaluation.well_grounded_pct >= 70 ? "default" : "secondary"}>
-                      {evaluation.well_grounded_pct}% grounded
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground">{evaluation.summary}</p>
-                </div>
-              )}
+              {/* ── Task 3: Rich Grounding Benchmark ── */}
+              {evaluation && <GroundingBenchmark evaluation={evaluation} />}
+
               <div className="space-y-4">
-                {result.questions.map((q: QuestionItem, i: number) => (
-                  <QuestionCard key={i} question={q} index={i + 1} />
-                ))}
+                {result.questions.map((q: QuestionItem, i: number) => {
+                  const detail = evaluation?.details.find((d) => d.question_id === q.id);
+                  return (
+                    <QuestionCard key={i} question={q} index={i + 1} groundingDetail={detail} />
+                  );
+                })}
               </div>
             </ScrollArea>
           )}
@@ -289,8 +492,26 @@ export function QuestionGenerator({ onGenerated }: { onGenerated?: () => void })
   );
 }
 
-function QuestionCard({ question, index }: { question: QuestionItem; index: number }) {
+// ── Question Card with Bloom Badge + Per-Question Grounding ───────────────
+
+function QuestionCard({
+  question,
+  index,
+  groundingDetail,
+}: {
+  question: QuestionItem;
+  index: number;
+  groundingDetail?: { question_id: number; grounding_score: number; status: string };
+}) {
   const [showAnswer, setShowAnswer] = useState(false);
+
+  const groundingIcon = groundingDetail
+    ? groundingDetail.status === "well_grounded"
+      ? { color: "text-emerald-500", title: `Well grounded (${Math.round(groundingDetail.grounding_score * 100)}%)` }
+      : groundingDetail.status === "partially_grounded"
+      ? { color: "text-amber-500", title: `Partially grounded (${Math.round(groundingDetail.grounding_score * 100)}%)` }
+      : { color: "text-red-500", title: `Poorly grounded (${Math.round(groundingDetail.grounding_score * 100)}%)` }
+    : null;
 
   return (
     <div className="rounded-lg border p-4 space-y-3">
@@ -299,7 +520,17 @@ function QuestionCard({ question, index }: { question: QuestionItem; index: numb
           <span className="text-muted-foreground mr-2">Q{index}.</span>
           {question.question}
         </p>
-        <div className="flex gap-1 shrink-0">
+        <div className="flex gap-1 shrink-0 items-center">
+          {/* Grounding indicator */}
+          {groundingIcon && (
+            <span title={groundingIcon.title}>
+              <svg className={`h-4 w-4 ${groundingIcon.color}`} fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+              </svg>
+            </span>
+          )}
+          {/* Bloom badge (Task 1) */}
+          <BloomBadge level={question.bloom_level} />
           <Badge variant="secondary">{question.type}</Badge>
           <Badge
             variant="outline"

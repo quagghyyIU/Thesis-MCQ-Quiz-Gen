@@ -51,6 +51,7 @@ async def create_generation(body: GenerateRequest):
             question_types=body.question_types,
             language=language,
             pattern=pattern,
+            difficulty_distribution=body.difficulty_distribution,
         )
         with get_db() as db:
             db.execute(
