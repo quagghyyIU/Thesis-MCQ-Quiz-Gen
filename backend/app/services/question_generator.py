@@ -9,8 +9,16 @@ from app.services.chunk_selector import select_relevant_chunks
 GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
 GROQ_BASE = "https://api.groq.com/openai/v1"
 
-_cache: dict[str, tuple[list[dict], str, int]] = {}
+CacheEntry = tuple[list[dict], str, int, str]
+_cache: dict[str, CacheEntry] = {}
 MAX_CACHE = 100
+
+
+def _normalize_cached_result(entry: tuple) -> CacheEntry:
+    if len(entry) == 4:
+        return entry  # type: ignore[return-value]
+    questions, prompt_used, tokens = entry  # type: ignore[misc]
+    return questions, prompt_used, tokens, "unknown"
 
 SYSTEM_PROMPTS = {
     "en": """You are an expert exam question generator for educational purposes.
@@ -350,13 +358,33 @@ async def generate_questions(
 
     cache_key = hashlib.md5(prompt.encode()).hexdigest()
     if cache_key in _cache:
-        return _cache[cache_key]
+        entry = _cache[cache_key]
+        normalized = _normalize_cached_result(entry)
+        if len(entry) == 3:
+            _cache[cache_key] = normalized
+        return normalized
 
     system = _get_system_prompt(language)
+    prompt_used = prompt
     raw_text, tokens, provider = await _call_llm_with_fallback(system, prompt)
-    questions = _parse_response(raw_text)
+    try:
+        questions = _parse_response(raw_text)
+    except ValueError:
+        # Retry once with stricter formatting guidance when model returns malformed JSON.
+        repair_prompt = (
+            f"{prompt}\n\n"
+            "IMPORTANT: Your previous response was invalid JSON. "
+            "Return ONLY a valid JSON array that strictly matches the requested schema. "
+            "Do not include markdown fences, comments, or trailing characters."
+        )
+        retry_text, retry_tokens, retry_provider = await _call_llm_with_fallback(system, repair_prompt)
+        questions = _parse_response(retry_text)
+        raw_text = retry_text
+        tokens += retry_tokens
+        provider = retry_provider
+        prompt_used = repair_prompt
 
-    result = (questions, prompt, tokens, provider)
+    result = (questions, prompt_used, tokens, provider)
     if len(_cache) >= MAX_CACHE:
         oldest = next(iter(_cache))
         del _cache[oldest]

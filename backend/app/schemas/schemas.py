@@ -23,3 +23,9 @@ class BatchJobCreate(BaseModel):
     pattern_id: Optional[int] = None
     num_questions: int = 10
     question_types: list[str] = ["mcq"]
+
+
+class QuizSubmitRequest(BaseModel):
+    generation_id: int
+    answers: dict[str, str]
+    time_started: str

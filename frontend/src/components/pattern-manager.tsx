@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { api, PatternItem } from "@/lib/api";
+import { getDifficultyClass } from "@/lib/ui-status";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { toast } from "sonner";
 
@@ -179,11 +180,7 @@ function PatternCard({ pattern, onDelete }: { pattern: PatternItem; onDelete: (i
           <Badge
             key={diff}
             variant="outline"
-            className={
-              diff === "hard" ? "border-red-300 text-red-600"
-                : diff === "medium" ? "border-yellow-300 text-yellow-600"
-                : "border-green-300 text-green-600"
-            }
+            className={getDifficultyClass(diff)}
           >
             {diff}: {Math.round(pct * 100)}%
           </Badge>

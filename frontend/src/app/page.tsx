@@ -2,12 +2,15 @@
 
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DocumentUpload } from "@/components/document-upload";
-import { PatternManager } from "@/components/pattern-manager";
-import { QuestionGenerator } from "@/components/question-generator";
-import { GenerationHistory } from "@/components/generation-history";
-import { BatchProcessor } from "@/components/batch-processor";
-import { UsageStats } from "./components/UsageStats";
+import { ModeToggle } from "@/components/mode-toggle";
+import {
+  BatchProcessor,
+  DocumentUpload,
+  GenerationHistory,
+  PatternManager,
+  QuestionGenerator,
+  UsageStats,
+} from "@/features";
 
 const NAV_ITEMS = [
   { value: 0, label: "Generate", icon: "M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" },
@@ -37,6 +40,7 @@ export default function Home() {
               </p>
             </div>
           </div>
+          <ModeToggle />
         </div>
       </header>
 
@@ -54,7 +58,7 @@ export default function Home() {
           </TabsList>
 
           <TabsContent value={0}>
-            <QuestionGenerator key={refreshKey} onGenerated={refresh} />
+            <QuestionGenerator key={refreshKey} />
           </TabsContent>
 
           <TabsContent value={1}>

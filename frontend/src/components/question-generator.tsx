@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -17,16 +18,9 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress, ProgressLabel, ProgressValue } from "@/components/ui/progress";
 import { api, DocumentItem, PatternItem, GenerationItem, QuestionItem } from "@/lib/api";
+import { getDifficultyClass } from "@/lib/ui-status";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { toast } from "sonner";
-
-const QUESTION_TYPES = [
-  { value: "mcq", label: "Multiple Choice" },
-  { value: "short_answer", label: "Short Answer" },
-  { value: "true_false", label: "True / False" },
-  { value: "fill_blank", label: "Fill in the Blank" },
-  { value: "essay", label: "Essay" },
-];
 
 // ── Bloom's Taxonomy Helpers ──────────────────────────────────────────────
 
@@ -216,13 +210,13 @@ function DifficultySliders({
 
 // ── Main Component ────────────────────────────────────────────────────────
 
-export function QuestionGenerator({ onGenerated }: { onGenerated?: () => void }) {
+export function QuestionGenerator() {
+  const router = useRouter();
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [patterns, setPatterns] = useState<PatternItem[]>([]);
   const [selectedDoc, setSelectedDoc] = useState<string>("");
   const [selectedPattern, setSelectedPattern] = useState<string>("none");
-  const [numQuestions, setNumQuestions] = useState(10);
-  const [selectedTypes, setSelectedTypes] = useState<string[]>(["mcq"]);
+  const [numQuestionsInput, setNumQuestionsInput] = useState("10");
   const [language, setLanguage] = useState<string>("auto");
   const [generating, setGenerating] = useState(false);
   const [result, setResult] = useState<GenerationItem | null>(null);
@@ -242,6 +236,11 @@ export function QuestionGenerator({ onGenerated }: { onGenerated?: () => void })
 
   const diffTotal = diffDistribution.easy + diffDistribution.medium + diffDistribution.hard;
   const diffValid = !diffEnabled || diffTotal === 100;
+  const selectedDocLabel = documents.find((doc) => String(doc.id) === selectedDoc)?.filename;
+  const selectedPatternLabel =
+    selectedPattern === "none"
+      ? "No pattern"
+      : patterns.find((pattern) => String(pattern.id) === selectedPattern)?.name;
 
   const loadData = useCallback(async () => {
     try {
@@ -257,16 +256,14 @@ export function QuestionGenerator({ onGenerated }: { onGenerated?: () => void })
     loadData();
   }, [loadData]);
 
-  const toggleType = (type: string) => {
-    setSelectedTypes((prev) =>
-      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
-    );
-  };
-
   const handleGenerate = async () => {
     if (!selectedDoc) return toast.error("Select a document first");
-    if (selectedTypes.length === 0) return toast.error("Select at least one question type");
     if (!diffValid) return toast.error("Difficulty distribution must total 100%");
+
+    const parsedNumQuestions = Number.parseInt(numQuestionsInput, 10);
+    if (!Number.isFinite(parsedNumQuestions) || parsedNumQuestions < 1 || parsedNumQuestions > 50) {
+      return toast.error("Number of questions must be between 1 and 50");
+    }
 
     setGenerating(true);
     setResult(null);
@@ -275,14 +272,13 @@ export function QuestionGenerator({ onGenerated }: { onGenerated?: () => void })
       const gen = await api.generateQuestions({
         document_id: Number(selectedDoc),
         pattern_id: selectedPattern !== "none" ? Number(selectedPattern) : undefined,
-        num_questions: numQuestions,
-        question_types: selectedTypes,
+        num_questions: parsedNumQuestions,
+        question_types: ["mcq"],
         language: language === "auto" ? undefined : language,
         difficulty_distribution: diffEnabled ? diffDistribution : undefined,
       });
       setResult(gen);
       toast.success(`Generated ${gen.questions.length} questions`);
-      onGenerated?.();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Generation failed");
     } finally {
@@ -338,7 +334,9 @@ export function QuestionGenerator({ onGenerated }: { onGenerated?: () => void })
             <Label>Source Document</Label>
             <Select value={selectedDoc} onValueChange={(v) => v && setSelectedDoc(v)}>
               <SelectTrigger>
-                <SelectValue placeholder="Select a document..." />
+                <SelectValue placeholder="Select a document...">
+                  {selectedDocLabel || "Select a document..."}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {documents.map((d) => (
@@ -354,7 +352,9 @@ export function QuestionGenerator({ onGenerated }: { onGenerated?: () => void })
             <Label>Pattern (optional)</Label>
             <Select value={selectedPattern} onValueChange={(v) => v && setSelectedPattern(v)}>
               <SelectTrigger>
-                <SelectValue placeholder="No pattern" />
+                <SelectValue placeholder="No pattern">
+                  {selectedPatternLabel || "No pattern"}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">No pattern</SelectItem>
@@ -373,25 +373,9 @@ export function QuestionGenerator({ onGenerated }: { onGenerated?: () => void })
               type="number"
               min={1}
               max={50}
-              value={numQuestions}
-              onChange={(e) => setNumQuestions(Number(e.target.value))}
+              value={numQuestionsInput}
+              onChange={(e) => setNumQuestionsInput(e.target.value)}
             />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Question Types</Label>
-            <div className="flex flex-wrap gap-2">
-              {QUESTION_TYPES.map((qt) => (
-                <Badge
-                  key={qt.value}
-                  variant={selectedTypes.includes(qt.value) ? "default" : "outline"}
-                  className="cursor-pointer"
-                  onClick={() => toggleType(qt.value)}
-                >
-                  {qt.label}
-                </Badge>
-              ))}
-            </div>
           </div>
 
           <div className="space-y-2">
@@ -447,6 +431,9 @@ export function QuestionGenerator({ onGenerated }: { onGenerated?: () => void })
               <Button variant="outline" size="sm" onClick={exportQuestions}>
                 Export
               </Button>
+              <Button size="sm" onClick={() => router.push(`/quiz/${result.id}`)}>
+                Start Quiz
+              </Button>
             </div>
           )}
         </CardHeader>
@@ -472,7 +459,7 @@ export function QuestionGenerator({ onGenerated }: { onGenerated?: () => void })
               )}
             </div>
           ) : (
-            <ScrollArea className="h-[600px] pr-4">
+            <ScrollArea className="h-[min(70vh,600px)] pr-4">
               {/* ── Task 3: Rich Grounding Benchmark ── */}
               {evaluation && <GroundingBenchmark evaluation={evaluation} />}
 
@@ -534,13 +521,7 @@ function QuestionCard({
           <Badge variant="secondary">{question.type}</Badge>
           <Badge
             variant="outline"
-            className={
-              question.difficulty === "hard"
-                ? "border-red-300 text-red-600"
-                : question.difficulty === "medium"
-                ? "border-yellow-300 text-yellow-600"
-                : "border-green-300 text-green-600"
-            }
+            className={getDifficultyClass(question.difficulty)}
           >
             {question.difficulty}
           </Badge>
