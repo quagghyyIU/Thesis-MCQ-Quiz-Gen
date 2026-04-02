@@ -1,6 +1,6 @@
-# QuizGen – Exam-Style Quiz Generator
+# QuizGen – MCQ Practice Platform (Quiz Generator + Review)
 
-AI-powered tool that generates exam-style questions from lecture materials while preserving the **pattern** of past exams (question types, difficulty distribution, style).
+AI-powered tool that generates exam-style **MCQ questions** from lecture materials while preserving the **pattern** of past exams (difficulty/style, Grounding quality).
 
 Designed for my thesis to support lecturers in rapidly creating consistent, well-grounded quizzes from existing slides or documents.
 
@@ -18,9 +18,8 @@ Designed for my thesis to support lecturers in rapidly creating consistent, well
   - Paste a full exam paper (headers, student info, etc.)
   - LLM automatically:
     - Detects question boundaries
-    - Classifies question type (MCQ / Short Answer / Essay)
     - Estimates difficulty using **Bloom’s Taxonomy** verbs
-  - Builds an exam **pattern profile** (type % + difficulty distribution)
+  - Builds an exam **pattern profile** (difficulty distribution + style metadata)
 
 - **Pattern-aligned question generation**
   - RAG retrieval over uploaded lecture materials
@@ -28,9 +27,18 @@ Designed for my thesis to support lecturers in rapidly creating consistent, well
     - Extracted pattern
     - Example questions from the original exam
     - Top‑k relevant chunks from documents
-  - Generates new questions with:
-    - Type + difficulty badges
+  - Generates new questions **(MCQ-only)** with:
+    - Difficulty + Bloom badges per question
     - Answers and explanations
+
+- **Quiz Practice Mode (web-based)**
+  - From generation results/history: click **Start Quiz** to enter `/quiz/[genId]`
+  - Full quiz UI: elapsed timer, next/prev, submit
+  - Score summary + review mode:
+    - Highlight correct vs incorrect
+    - Show correct answer + your answer
+    - Explanation + Bloom breakdown
+  - Quiz attempts are persisted in SQLite (for future dashboard/analytics)
 
 - **Grounding & hallucination detection**
   - Measures keyword overlap between each question and source chunks
@@ -42,7 +50,7 @@ Designed for my thesis to support lecturers in rapidly creating consistent, well
 - **History, export, and usage tracking**
   - Full history of generations (including provider + token usage)
   - Export to `.txt`
-  - Token usage & API status dashboard
+  - Usage stats & API status dashboard
 
 ---
 
@@ -133,19 +141,32 @@ Key AI/ML components:
    - System extracts questions and builds pattern statistics
 
 3. **Generate questions** (`Generate` tab)
-   - Select source document + pattern
-   - Choose number of questions, types, and language
+   - Select source document + optional pattern
+   - Choose number of questions and language
    - Run generation and review questions + explanations
+   - Click **Start Quiz** to practice the generated MCQs
 
-4. **Evaluate accuracy**
+4. **Practice & review (Quiz Practice Mode)**
+   - Do the quiz in `/quiz/[genId]`
+   - Submit to see score + Bloom breakdown
+   - Review mode shows per-question correctness + explanations
+
+5. **Evaluate accuracy & history/export**
    - Click **Evaluate Accuracy** to see grounding scores per question
-
-5. **Review history & export**
-   - `History` tab: open any past run, re-evaluate, and export to `.txt`
+   - `History` tab: open any past run and export to `.txt` (completed runs also expose **Start Quiz**)
 
 ---
 
-## 6. Thesis Context
+## 6. Roadmap (high level)
+
+This repo is organized by phases (see `doc/mcq_platform_roadmap.md`).
+
+- **Phase 2:** MCQ Practice Mode (done: Generate -> Start Quiz -> Submit -> Review)
+- **Phase 3 (planned):** Quiz dashboard & analytics (trend + Bloom breakdown + attempt history)
+
+---
+
+## 7. Thesis Context
 
 This project is developed as part of my bachelor thesis on:
 
