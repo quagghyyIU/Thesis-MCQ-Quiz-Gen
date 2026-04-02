@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { api, GenerationItem, QuestionItem } from "@/lib/api";
+import { getAsyncStatusClass, getGroundingClass } from "@/lib/ui-status";
 import { toast } from "sonner";
 
 interface EvaluationResult {
@@ -19,6 +21,7 @@ interface EvaluationResult {
 }
 
 export function GenerationHistory() {
+  const router = useRouter();
   const [generations, setGenerations] = useState<GenerationItem[]>([]);
   const [selected, setSelected] = useState<GenerationItem | null>(null);
   const [evaluation, setEvaluation] = useState<EvaluationResult | null>(null);
@@ -76,18 +79,6 @@ export function GenerationHistory() {
     URL.revokeObjectURL(url);
   };
 
-  const statusColor = (s: string) => {
-    if (s === "completed") return "border-green-300 text-green-600";
-    if (s === "failed") return "border-red-300 text-red-600";
-    return "border-yellow-300 text-yellow-600";
-  };
-
-  const groundingColor = (status: string) => {
-    if (status === "well_grounded") return "border-green-300 text-green-600";
-    if (status === "partially_grounded") return "border-yellow-300 text-yellow-600";
-    return "border-red-300 text-red-600";
-  };
-
   return (
     <div className="grid gap-6 lg:grid-cols-[350px_1fr]">
       <Card>
@@ -96,7 +87,7 @@ export function GenerationHistory() {
           <CardDescription>{generations.length} generations</CardDescription>
         </CardHeader>
         <CardContent>
-          <ScrollArea className="h-[500px]">
+          <ScrollArea className="h-[min(65vh,500px)]">
             <div className="space-y-2">
               {generations.map((g) => (
                 <div
@@ -108,7 +99,7 @@ export function GenerationHistory() {
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Generation #{g.id}</span>
-                    <Badge variant="outline" className={statusColor(g.status)}>
+                    <Badge variant="outline" className={getAsyncStatusClass(g.status)}>
                       {g.status}
                     </Badge>
                   </div>
@@ -145,6 +136,9 @@ export function GenerationHistory() {
               <Button variant="outline" size="sm" onClick={handleExport}>
                 Export
               </Button>
+              <Button size="sm" onClick={() => router.push(`/quiz/${selected.id}`)}>
+                Start Quiz
+              </Button>
             </div>
           )}
         </CardHeader>
@@ -154,7 +148,7 @@ export function GenerationHistory() {
               Click a generation from the list to view its questions.
             </p>
           ) : (
-            <ScrollArea className="h-[500px] pr-4">
+            <ScrollArea className="h-[min(65vh,500px)] pr-4">
               {evaluation && (
                 <div className="mb-4 rounded-lg border bg-muted/50 p-4 space-y-3">
                   <div className="flex items-center justify-between">
@@ -212,12 +206,6 @@ function HistoryQuestionCard({
 }) {
   const [showAnswer, setShowAnswer] = useState(false);
 
-  const groundingColor = (status: string) => {
-    if (status === "well_grounded") return "border-green-300 text-green-600";
-    if (status === "partially_grounded") return "border-yellow-300 text-yellow-600";
-    return "border-red-300 text-red-600";
-  };
-
   const groundingLabel = (status: string) => {
     if (status === "well_grounded") return "Grounded";
     if (status === "partially_grounded") return "Partial";
@@ -234,7 +222,7 @@ function HistoryQuestionCard({
         <div className="flex gap-1 shrink-0">
           <Badge variant="secondary">{question.type}</Badge>
           {grounding && (
-            <Badge variant="outline" className={groundingColor(grounding.status)}>
+            <Badge variant="outline" className={getGroundingClass(grounding.status)}>
               {groundingLabel(grounding.status)} ({Math.round(grounding.grounding_score * 100)}%)
             </Badge>
           )}

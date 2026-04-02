@@ -67,6 +67,19 @@ CREATE TABLE IF NOT EXISTS api_calls (
     token_usage INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS quiz_attempts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    generation_id INTEGER NOT NULL,
+    answers TEXT NOT NULL DEFAULT '{}',
+    score REAL NOT NULL DEFAULT 0,
+    correct_count INTEGER NOT NULL DEFAULT 0,
+    total_questions INTEGER NOT NULL DEFAULT 0,
+    time_started TEXT NOT NULL,
+    time_finished TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (generation_id) REFERENCES generations(id)
+);
 """
 
 
@@ -84,6 +97,17 @@ def _migrate_db(db):
         db.execute("SELECT provider FROM generations LIMIT 1")
     except sqlite3.OperationalError:
         db.execute("ALTER TABLE generations ADD COLUMN provider TEXT NOT NULL DEFAULT 'gemini'")
+
+    # Add columns for quiz attempts table if database was created before latest schema.
+    try:
+        db.execute("SELECT correct_count FROM quiz_attempts LIMIT 1")
+    except sqlite3.OperationalError:
+        db.execute("ALTER TABLE quiz_attempts ADD COLUMN correct_count INTEGER NOT NULL DEFAULT 0")
+
+    try:
+        db.execute("SELECT total_questions FROM quiz_attempts LIMIT 1")
+    except sqlite3.OperationalError:
+        db.execute("ALTER TABLE quiz_attempts ADD COLUMN total_questions INTEGER NOT NULL DEFAULT 0")
 
 
 @contextmanager

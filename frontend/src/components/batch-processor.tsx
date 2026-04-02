@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { api, DocumentItem, PatternItem, BatchJobItem } from "@/lib/api";
+import { getAsyncStatusClass } from "@/lib/ui-status";
 import { toast } from "sonner";
 
 export function BatchProcessor() {
@@ -89,12 +90,6 @@ export function BatchProcessor() {
         if (pollRef.current) clearInterval(pollRef.current);
       }
     }, 3000);
-  };
-
-  const statusColor = (s: string) => {
-    if (s === "completed") return "border-green-300 text-green-600";
-    if (s === "failed") return "border-red-300 text-red-600";
-    return "border-yellow-300 text-yellow-600";
   };
 
   return (
@@ -174,7 +169,7 @@ export function BatchProcessor() {
               <div key={b.id} className="rounded-lg border p-4 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="font-medium">Batch #{b.id}</span>
-                  <Badge variant="outline" className={statusColor(b.status)}>
+                  <Badge variant="outline" className={getAsyncStatusClass(b.status)}>
                     {b.status}
                   </Badge>
                 </div>

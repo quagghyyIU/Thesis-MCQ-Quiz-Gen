@@ -65,6 +65,44 @@ export interface BatchJobItem {
   created_at: string;
 }
 
+export interface QuizResultItem {
+  q_id: number;
+  correct: boolean;
+  user_answer: string;
+  correct_answer: string;
+  bloom_level: string;
+  question?: string;
+  explanation?: string;
+  options?: string[];
+}
+
+export interface QuizSubmitResponse {
+  attempt_id: number;
+  generation_id: number;
+  score: number;
+  correct_count: number;
+  total_questions: number;
+  time_taken_seconds: number;
+  results: QuizResultItem[];
+}
+
+export interface QuizAttemptItem {
+  id: number;
+  generation_id: number;
+  answers: Record<string, string>;
+  score: number;
+  correct_count: number;
+  total_questions: number;
+  time_started: string;
+  time_finished: string;
+  created_at: string;
+}
+
+export interface QuizAttemptDetail extends QuizAttemptItem {
+  time_taken_seconds: number;
+  results: QuizResultItem[];
+}
+
 export const api = {
   uploadDocument(file: File): Promise<DocumentItem> {
     const formData = new FormData();
@@ -153,5 +191,25 @@ export const api = {
 
   getBatch(id: number): Promise<BatchJobItem> {
     return request(`/batch/${id}`);
+  },
+
+  submitQuizAttempt(data: {
+    generation_id: number;
+    answers: Record<string, string>;
+    time_started: string;
+  }): Promise<QuizSubmitResponse> {
+    return request("/quiz/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+  },
+
+  getQuizAttempts(): Promise<QuizAttemptItem[]> {
+    return request("/quiz/attempts");
+  },
+
+  getQuizAttempt(id: number): Promise<QuizAttemptDetail> {
+    return request(`/quiz/attempts/${id}`);
   },
 };

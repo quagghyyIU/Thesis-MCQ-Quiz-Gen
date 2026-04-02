@@ -46,7 +46,7 @@ async def _run_batch(batch_id: int, doc_ids: list[int], pattern_id: int | None, 
 
         gen_status = JobStatus.FAILED
         try:
-            questions, prompt_used, tokens = await generate_questions(
+            questions, prompt_used, tokens, provider = await generate_questions(
                 document_id=doc_id,
                 chunks=doc["processed_chunks"],
                 num_questions=num_questions,
@@ -57,8 +57,8 @@ async def _run_batch(batch_id: int, doc_ids: list[int], pattern_id: int | None, 
             gen_status = JobStatus.COMPLETED
             with get_db() as db:
                 db.execute(
-                    "UPDATE generations SET questions = ?, prompt_used = ?, token_usage = ?, status = ? WHERE id = ?",
-                    (json.dumps(questions), prompt_used, tokens, gen_status, gen_id),
+                    "UPDATE generations SET questions = ?, prompt_used = ?, token_usage = ?, provider = ?, status = ? WHERE id = ?",
+                    (json.dumps(questions), prompt_used, tokens, provider, gen_status, gen_id),
                 )
         except Exception:
             with get_db() as db:
