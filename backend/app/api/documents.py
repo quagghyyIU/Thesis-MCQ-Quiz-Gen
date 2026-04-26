@@ -1,11 +1,12 @@
 import json
 import os
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 
 from app.database import get_db, now_iso, row_to_dict
 from app.services.document_processor import process_document
 from app.services.embedder import embed_texts
 from app.config import UPLOAD_DIR, MAX_UPLOAD_SIZE_MB
+from app.api.auth import get_current_user
 
 router = APIRouter()
 
@@ -19,7 +20,10 @@ ALLOWED_TYPES = {
 
 
 @router.post("/upload")
-async def upload_document(file: UploadFile = File(...)):
+async def upload_document(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
+):
     if file.content_type not in ALLOWED_TYPES:
         raise HTTPException(400, f"Unsupported file type: {file.content_type}. Use PDF, DOCX, or PPTX.")
 
@@ -41,17 +45,21 @@ async def upload_document(file: UploadFile = File(...)):
         os.remove(file_path)
         raise HTTPException(500, f"Failed to process document: {str(e)}")
 
-    # Embed all chunks via Gemini Embedding API
     try:
-        embeddings = await embed_texts(chunks)
+        embeddings = await embed_texts(
+            chunks,
+            user_id=current_user["id"],
+            call_type="document_embedding",
+        )
     except Exception as e:
         os.remove(file_path)
         raise HTTPException(500, f"Failed to embed document chunks: {str(e)}")
 
+    uid = current_user["id"]
     with get_db() as db:
         cursor = db.execute(
-            "INSERT INTO documents (filename, file_type, raw_text, processed_chunks, language, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-            (file.filename, file_type, raw_text, json.dumps(chunks), language, now_iso()),
+            "INSERT INTO documents (user_id, filename, file_type, raw_text, processed_chunks, language, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (uid, file.filename, file_type, raw_text, json.dumps(chunks), language, now_iso()),
         )
         doc_id = cursor.lastrowid
 
@@ -61,35 +69,42 @@ async def upload_document(file: UploadFile = File(...)):
                 (doc_id, i, chunk, json.dumps(emb)),
             )
 
-        db.execute(
-            "INSERT INTO api_calls (call_type, provider, token_usage, created_at) VALUES (?, ?, ?, ?)",
-            ("document_embedding", "gemini", 0, now_iso()),
-        )
-
         doc = db.execute("SELECT * FROM documents WHERE id = ?", (doc_id,)).fetchone()
     return row_to_dict(doc, DOC_JSON_FIELDS)
 
 
 @router.get("/")
-def list_documents():
+def list_documents(current_user: dict = Depends(get_current_user)):
+    uid = current_user["id"]
     with get_db() as db:
-        rows = db.execute("SELECT * FROM documents ORDER BY created_at DESC").fetchall()
+        rows = db.execute(
+            "SELECT * FROM documents WHERE user_id = ? ORDER BY created_at DESC",
+            (uid,),
+        ).fetchall()
     return [row_to_dict(r, DOC_JSON_FIELDS) for r in rows]
 
 
 @router.get("/{doc_id}")
-def get_document(doc_id: int):
+def get_document(doc_id: int, current_user: dict = Depends(get_current_user)):
+    uid = current_user["id"]
     with get_db() as db:
-        row = db.execute("SELECT * FROM documents WHERE id = ?", (doc_id,)).fetchone()
+        row = db.execute(
+            "SELECT * FROM documents WHERE id = ? AND user_id = ?",
+            (doc_id, uid),
+        ).fetchone()
     if not row:
         raise HTTPException(404, "Document not found")
     return row_to_dict(row, DOC_JSON_FIELDS)
 
 
 @router.delete("/{doc_id}")
-def delete_document(doc_id: int):
+def delete_document(doc_id: int, current_user: dict = Depends(get_current_user)):
+    uid = current_user["id"]
     with get_db() as db:
-        row = db.execute("SELECT * FROM documents WHERE id = ?", (doc_id,)).fetchone()
+        row = db.execute(
+            "SELECT * FROM documents WHERE id = ? AND user_id = ?",
+            (doc_id, uid),
+        ).fetchone()
         if not row:
             raise HTTPException(404, "Document not found")
         file_path = os.path.join(UPLOAD_DIR, row["filename"])

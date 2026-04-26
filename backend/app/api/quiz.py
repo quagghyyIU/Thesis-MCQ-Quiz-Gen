@@ -2,10 +2,11 @@ import json
 import re
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 
 from app.database import get_db, now_iso, row_to_dict
 from app.schemas.schemas import QuizSubmitRequest
+from app.api.auth import get_current_user
 
 router = APIRouter()
 
@@ -78,9 +79,13 @@ def _time_taken_seconds(time_started: str, time_finished: str) -> int:
 
 
 @router.post("/submit")
-def submit_quiz(body: QuizSubmitRequest):
+def submit_quiz(body: QuizSubmitRequest, current_user: dict = Depends(get_current_user)):
+    uid = current_user["id"]
     with get_db() as db:
-        gen_row = db.execute("SELECT * FROM generations WHERE id = ?", (body.generation_id,)).fetchone()
+        gen_row = db.execute(
+            "SELECT * FROM generations WHERE id = ? AND user_id = ?",
+            (body.generation_id, uid),
+        ).fetchone()
         if not gen_row:
             raise HTTPException(404, "Generation not found")
 
@@ -124,10 +129,11 @@ def submit_quiz(body: QuizSubmitRequest):
         cursor = db.execute(
             """
             INSERT INTO quiz_attempts (
-                generation_id, answers, score, correct_count, total_questions, time_started, time_finished, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                user_id, generation_id, answers, score, correct_count, total_questions, time_started, time_finished, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
+                uid,
                 body.generation_id,
                 json.dumps(normalized_answers),
                 score,
@@ -152,21 +158,32 @@ def submit_quiz(body: QuizSubmitRequest):
 
 
 @router.get("/attempts")
-def list_attempts():
+def list_attempts(current_user: dict = Depends(get_current_user)):
+    uid = current_user["id"]
     with get_db() as db:
-        rows = db.execute("SELECT * FROM quiz_attempts ORDER BY created_at DESC").fetchall()
+        rows = db.execute(
+            "SELECT * FROM quiz_attempts WHERE user_id = ? ORDER BY created_at DESC",
+            (uid,),
+        ).fetchall()
     return [row_to_dict(row, ATTEMPT_JSON_FIELDS) for row in rows]
 
 
 @router.get("/attempts/{attempt_id}")
-def get_attempt(attempt_id: int):
+def get_attempt(attempt_id: int, current_user: dict = Depends(get_current_user)):
+    uid = current_user["id"]
     with get_db() as db:
-        attempt_row = db.execute("SELECT * FROM quiz_attempts WHERE id = ?", (attempt_id,)).fetchone()
+        attempt_row = db.execute(
+            "SELECT * FROM quiz_attempts WHERE id = ? AND user_id = ?",
+            (attempt_id, uid),
+        ).fetchone()
         if not attempt_row:
             raise HTTPException(404, "Attempt not found")
         attempt = row_to_dict(attempt_row, ATTEMPT_JSON_FIELDS)
 
-        gen_row = db.execute("SELECT * FROM generations WHERE id = ?", (attempt["generation_id"],)).fetchone()
+        gen_row = db.execute(
+            "SELECT * FROM generations WHERE id = ? AND user_id = ?",
+            (attempt["generation_id"], uid),
+        ).fetchone()
         if not gen_row:
             raise HTTPException(404, "Generation not found for this attempt")
         generation = row_to_dict(gen_row, GEN_JSON_FIELDS)

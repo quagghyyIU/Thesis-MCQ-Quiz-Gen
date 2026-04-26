@@ -9,3 +9,7 @@ langdetect
 pydantic
 aiofiles
 python-dotenv
+passlib[bcrypt]
+pyjwt
+numpy
+PyYAML

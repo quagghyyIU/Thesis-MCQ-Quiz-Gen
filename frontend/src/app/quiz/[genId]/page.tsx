@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { LoadingSpinner } from "@/components/loading-spinner";
+import { ProtectedApp } from "@/components/protected-app";
 import { api, GenerationItem, QuestionItem, QuizSubmitResponse } from "@/lib/api";
 
 const BLOOM_LABELS: Record<string, string> = {
@@ -50,7 +51,7 @@ function QuizTopActions({ generationId }: { generationId: number }) {
   );
 }
 
-export default function QuizPage() {
+function QuizPageContent() {
   const params = useParams<{ genId: string }>();
   const generationId = Number(params.genId);
 
@@ -59,6 +60,7 @@ export default function QuizPage() {
   const [generation, setGeneration] = useState<GenerationItem | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [sessionStarted, setSessionStarted] = useState(false);
   const [startedAt, setStartedAt] = useState<string>("");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [submitResult, setSubmitResult] = useState<QuizSubmitResponse | null>(null);
@@ -74,7 +76,6 @@ export default function QuizPage() {
       try {
         const gen = await api.getGeneration(generationId);
         setGeneration(gen);
-        setStartedAt(new Date().toISOString());
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Failed to load generation");
       } finally {
@@ -86,7 +87,7 @@ export default function QuizPage() {
   }, [generationId]);
 
   useEffect(() => {
-    if (!startedAt || submitResult) return;
+    if (!startedAt || submitResult || !sessionStarted) return;
     const startedTs = new Date(startedAt).getTime();
     const timer = setInterval(() => {
       const now = Date.now();
@@ -94,7 +95,22 @@ export default function QuizPage() {
       setElapsedSeconds(seconds);
     }, 1000);
     return () => clearInterval(timer);
-  }, [startedAt, submitResult]);
+  }, [startedAt, submitResult, sessionStarted]);
+
+  const handleStartQuiz = () => {
+    setStartedAt(new Date().toISOString());
+    setSessionStarted(true);
+    setElapsedSeconds(0);
+  };
+
+  const handleRetryQuiz = () => {
+    setSubmitResult(null);
+    setAnswers({});
+    setCurrentIndex(0);
+    setSessionStarted(false);
+    setStartedAt("");
+    setElapsedSeconds(0);
+  };
 
   const mcqQuestions = useMemo(() => {
     if (!generation) return [];
@@ -260,10 +276,36 @@ export default function QuizPage() {
           <Link href="/">
             <Button className="transition-transform duration-150 active:scale-95">Back to Generate</Button>
           </Link>
-          <Link href={`/quiz/${generation.id}`}>
-            <Button variant="outline" className="transition-transform duration-150 active:scale-95">Retry Quiz</Button>
-          </Link>
+          <Button
+            type="button"
+            variant="outline"
+            className="transition-transform duration-150 active:scale-95"
+            onClick={handleRetryQuiz}
+          >
+            Retry Quiz
+          </Button>
         </div>
+      </div>
+    );
+  }
+
+  if (!sessionStarted) {
+    return (
+      <div className="mx-auto max-w-4xl px-6 py-8 space-y-4">
+        <QuizTopActions generationId={generation.id} />
+        <Card>
+          <CardHeader>
+            <CardTitle>Ready to practice</CardTitle>
+            <CardDescription>
+              Generation #{generation.id} · {mcqQuestions.length} MCQ · timer starts when you begin
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button type="button" onClick={handleStartQuiz} className="transition-transform duration-150 active:scale-95">
+              Start Quiz
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -344,5 +386,13 @@ export default function QuizPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function QuizPage() {
+  return (
+    <ProtectedApp>
+      <QuizPageContent />
+    </ProtectedApp>
   );
 }

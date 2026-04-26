@@ -7,6 +7,7 @@ class PatternCreate(BaseModel):
     description: str = ""
     sample_questions: list[str] = []
     raw_text: Optional[str] = None
+    user_instructions: Optional[str] = None
 
 
 class GenerateRequest(BaseModel):

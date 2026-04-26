@@ -1,0 +1,4 @@
+run_id,name,provider,model,recall_at_k,mrr,semantic_grounding,bloom_kl,llm_judge,diversity,questions_returned,prompt_version
+2026-04-26T17:42:26Z,baseline_vanilla,groq,groq:meta-llama/llama-4-scout-17b-16e-instruct (x6),1.0000,1.0000,0.7774,15.6738,5.0000,0.2271,6.00,v1
+2026-04-26T17:42:26Z,baseline_rag_only,groq,groq:meta-llama/llama-4-scout-17b-16e-instruct (x6),1.0000,1.0000,0.9255,13.0984,4.9583,0.1788,6.00,v1
+2026-04-26T17:42:26Z,full_system,groq,groq:meta-llama/llama-4-scout-17b-16e-instruct (x6),1.0000,1.0000,0.9162,3.8320,4.9167,0.1796,6.00,v1
