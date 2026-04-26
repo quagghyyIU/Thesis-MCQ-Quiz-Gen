@@ -1,17 +1,80 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+import { clearAccessToken, getAccessToken } from "./auth-storage";
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
+export const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+
+type RequestOptions = RequestInit & { skipAuth?: boolean };
+
+export class ApiError extends Error {
+  status: number;
+  code: string;
+  retryAfter: number | null;
+
+  constructor(message: string, status: number, code = "UNKNOWN", retryAfter: number | null = null) {
+    super(message);
+    this.status = status;
+    this.code = code;
+    this.retryAfter = retryAfter;
+  }
+}
+
+type ErrorBody = {
+  error?: { code?: string; message?: string; retry_after?: number | null };
+  detail?: string | { msg?: string }[];
+};
+
+function parseErrorBody(body: ErrorBody, status: number): ApiError {
+  if (body.error?.code) {
+    return new ApiError(
+      body.error.message || `API error: ${status}`,
+      status,
+      body.error.code,
+      body.error.retry_after ?? null,
+    );
+  }
+  const detail = body.detail;
+  const message =
+    typeof detail === "string"
+      ? detail
+      : Array.isArray(detail)
+        ? detail.map((d) => d.msg).filter(Boolean).join(", ")
+        : `API error: ${status}`;
+  return new ApiError(message, status);
+}
+
+async function request<T>(path: string, options?: RequestOptions): Promise<T> {
+  const headers: Record<string, string> = {
+    ...((options?.headers as Record<string, string>) || {}),
+  };
+  const token = getAccessToken();
+  if (token && !options?.skipAuth) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
-    headers: {
-      ...(options?.headers || {}),
-    },
+    headers,
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || `API error: ${res.status}`);
+
+  if (res.status === 401 && !options?.skipAuth && typeof window !== "undefined") {
+    clearAccessToken();
+    window.location.href = "/login";
+    throw new ApiError("Unauthorized", 401, "UNAUTHORIZED");
   }
+
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({ detail: res.statusText }))) as ErrorBody;
+    throw parseErrorBody(body, res.status);
+  }
+
   return res.json();
+}
+
+export interface UserResponse {
+  id: number;
+  username: string;
+  role: string;
+  created_at: string;
 }
 
 export interface DocumentItem {
@@ -103,7 +166,116 @@ export interface QuizAttemptDetail extends QuizAttemptItem {
   results: QuizResultItem[];
 }
 
+export interface UsageStatsData {
+  model: string;
+  total_tokens_used: number;
+  total_generations: number;
+  total_api_calls: number;
+  today_tokens: number;
+  failed_generations: number;
+  daily_history: Array<{ date: string; tokens: number; generations: number }>;
+  call_breakdown: Array<{
+    type: string;
+    provider: string;
+    count: number;
+    tokens: number;
+  }>;
+  provider_breakdown: Array<{
+    provider: string;
+    count: number;
+    tokens: number;
+  }>;
+  model_breakdown: Array<{
+    provider: string;
+    model: string;
+    count: number;
+    tokens: number;
+  }>;
+  fallback_today: number;
+  note?: string;
+}
+
+export interface UsageCallRow {
+  id: number;
+  call_type: string;
+  provider: string;
+  model: string;
+  status: string;
+  attempt_idx: number;
+  latency_ms: number;
+  error_msg?: string | null;
+  token_usage: number;
+  created_at: string;
+}
+
+export interface UsageBreakdownRow {
+  key: string;
+  count: number;
+  tokens: number;
+}
+
+export interface UsageOptions {
+  providers: string[];
+  models: string[];
+  call_types: string[];
+  statuses: string[];
+}
+
+export interface QuotaCheckResult {
+  status: string;
+  model?: string;
+  input_token_limit?: number;
+  output_token_limit?: number;
+  error?: string;
+}
+
 export const api = {
+  getMe(): Promise<UserResponse> {
+    return request("/auth/me");
+  },
+
+  getUsageStats(): Promise<UsageStatsData> {
+    return request("/usage/");
+  },
+
+  checkGeminiQuota(): Promise<QuotaCheckResult> {
+    return request("/usage/check-quota");
+  },
+
+  getUsageCalls(filters?: {
+    provider?: string;
+    model?: string;
+    call_type?: string;
+    status?: string;
+    from?: string;
+    to?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<UsageCallRow[]> {
+    const params = new URLSearchParams();
+    if (filters?.provider) params.set("provider", filters.provider);
+    if (filters?.model) params.set("model", filters.model);
+    if (filters?.call_type) params.set("call_type", filters.call_type);
+    if (filters?.status) params.set("status", filters.status);
+    if (filters?.from) params.set("from", filters.from);
+    if (filters?.to) params.set("to", filters.to);
+    if (typeof filters?.limit === "number") params.set("limit", String(filters.limit));
+    if (typeof filters?.offset === "number") params.set("offset", String(filters.offset));
+    const query = params.toString();
+    return request(`/usage/calls${query ? `?${query}` : ""}`);
+  },
+
+  getUsageBreakdown(
+    dimension: "provider" | "model" | "call_type" | "status",
+    days = 7,
+  ): Promise<UsageBreakdownRow[]> {
+    return request(`/usage/breakdown?dimension=${dimension}&days=${days}`);
+  },
+
+  getUsageOptions(): Promise<UsageOptions> {
+    return request("/usage/options");
+  },
+
   uploadDocument(file: File): Promise<DocumentItem> {
     const formData = new FormData();
     formData.append("file", file);
@@ -122,12 +294,20 @@ export const api = {
     return request(`/documents/${id}`, { method: "DELETE" });
   },
 
-  createPattern(data: { name: string; description?: string; sample_questions?: string[]; raw_text?: string }): Promise<PatternItem> {
-    return request("/patterns/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
+  createPattern(data: {
+    name: string;
+    description?: string;
+    raw_text?: string;
+    user_instructions?: string;
+    file?: File;
+  }): Promise<PatternItem> {
+    const formData = new FormData();
+    formData.append("name", data.name);
+    formData.append("description", data.description ?? "");
+    if (data.raw_text) formData.append("raw_text", data.raw_text);
+    if (data.user_instructions) formData.append("user_instructions", data.user_instructions);
+    if (data.file) formData.append("file", data.file);
+    return request("/patterns/", { method: "POST", body: formData });
   },
 
   getPatterns(): Promise<PatternItem[]> {
@@ -212,4 +392,33 @@ export const api = {
   getQuizAttempt(id: number): Promise<QuizAttemptDetail> {
     return request(`/quiz/attempts/${id}`);
   },
+};
+
+export type EvalRow = {
+  run_id: string;
+  name: string;
+  provider: string;
+  model: string;
+  recall_at_k: string;
+  mrr: string;
+  semantic_grounding: string;
+  bloom_kl: string;
+  llm_judge: string;
+  diversity: string;
+  questions_returned: string;
+  prompt_version: string;
+};
+
+export type EvalConfig = {
+  defaults?: Record<string, unknown>;
+  datasets?: Record<string, unknown>;
+  output?: Record<string, unknown>;
+  baselines?: Array<Record<string, unknown>>;
+};
+
+export const evalApi = {
+  latest: (): Promise<{ rows: EvalRow[]; run_id: string | null }> =>
+    request("/eval/latest"),
+  history: (): Promise<{ rows: EvalRow[] }> => request("/eval/history"),
+  config: (): Promise<EvalConfig> => request("/eval/config"),
 };

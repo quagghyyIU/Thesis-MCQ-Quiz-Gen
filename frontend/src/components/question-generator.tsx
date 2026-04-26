@@ -18,37 +18,11 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress, ProgressLabel, ProgressValue } from "@/components/ui/progress";
 import { api, DocumentItem, PatternItem, GenerationItem, QuestionItem } from "@/lib/api";
+import { showErrorToast } from "@/lib/error-toast";
 import { getDifficultyClass } from "@/lib/ui-status";
 import { LoadingSpinner } from "@/components/loading-spinner";
+import { BloomBadge } from "@/components/bloom-badge";
 import { toast } from "sonner";
-
-// ── Bloom's Taxonomy Helpers ──────────────────────────────────────────────
-
-const BLOOM_LEVELS: Record<string, { label: string; color: string; group: string; description: string }> = {
-  remember:    { label: "Remember",    color: "bg-emerald-100 text-emerald-700 border-emerald-300",   group: "Easy",   description: "Recall facts and basic concepts — define, list, name, identify" },
-  understand:  { label: "Understand",  color: "bg-teal-100 text-teal-700 border-teal-300",           group: "Easy",   description: "Explain ideas or concepts — explain, summarize, classify, compare" },
-  apply:       { label: "Apply",       color: "bg-amber-100 text-amber-700 border-amber-300",        group: "Medium", description: "Use information in new situations — apply, solve, implement, demonstrate" },
-  analyze:     { label: "Analyze",     color: "bg-violet-100 text-violet-700 border-violet-300",     group: "Hard",   description: "Draw connections among ideas — analyze, differentiate, examine, categorize" },
-  evaluate:    { label: "Evaluate",    color: "bg-rose-100 text-rose-700 border-rose-300",           group: "Hard",   description: "Justify a decision or position — evaluate, critique, assess, argue" },
-  create:      { label: "Create",      color: "bg-fuchsia-100 text-fuchsia-700 border-fuchsia-300",  group: "Hard",   description: "Produce new or original work — design, develop, construct, propose" },
-};
-
-function BloomBadge({ level }: { level: string }) {
-  const info = BLOOM_LEVELS[level] || BLOOM_LEVELS.apply;
-  return (
-    <span className="relative group/bloom">
-      <Badge variant="outline" className={`${info.color} cursor-help text-xs`}>
-        {info.label}
-      </Badge>
-      <span className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/bloom:block w-64 rounded-lg border bg-popover p-3 text-xs text-popover-foreground shadow-lg">
-        <span className="font-semibold">{info.label}</span>
-        <span className="text-muted-foreground ml-1">({info.group})</span>
-        <br />
-        <span className="text-muted-foreground mt-1 block">{info.description}</span>
-      </span>
-    </span>
-  );
-}
 
 // ── Grounding Benchmark Component ─────────────────────────────────────────
 
@@ -219,6 +193,8 @@ export function QuestionGenerator() {
   const [numQuestionsInput, setNumQuestionsInput] = useState("10");
   const [language, setLanguage] = useState<string>("auto");
   const [generating, setGenerating] = useState(false);
+  const [stage, setStage] = useState<"idle" | "preparing" | "generating" | "parsing">("idle");
+  const [elapsed, setElapsed] = useState(0);
   const [result, setResult] = useState<GenerationItem | null>(null);
   const [evaluation, setEvaluation] = useState<{
     overall_score: number;
@@ -268,6 +244,16 @@ export function QuestionGenerator() {
     setGenerating(true);
     setResult(null);
     setEvaluation(null);
+    setStage("preparing");
+    setElapsed(0);
+    const startedAt = Date.now();
+    const tick = setInterval(() => {
+      const secs = Math.floor((Date.now() - startedAt) / 1000);
+      setElapsed(secs);
+      if (secs >= 2 && secs < 12) setStage("generating");
+      else if (secs >= 12) setStage("parsing");
+    }, 500);
+
     try {
       const gen = await api.generateQuestions({
         document_id: Number(selectedDoc),
@@ -280,8 +266,11 @@ export function QuestionGenerator() {
       setResult(gen);
       toast.success(`Generated ${gen.questions.length} questions`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Generation failed");
+      showErrorToast(e, { fallback: "Generation failed", onRetry: () => handleGenerate() });
     } finally {
+      clearInterval(tick);
+      setStage("idle");
+      setElapsed(0);
       setGenerating(false);
     }
   };
@@ -293,7 +282,7 @@ export function QuestionGenerator() {
       const ev = await api.evaluateGeneration(result.id);
       setEvaluation(ev);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Evaluation failed");
+      showErrorToast(e, { fallback: "Evaluation failed" });
     } finally {
       setEvaluating(false);
     }
@@ -404,7 +393,10 @@ export function QuestionGenerator() {
             {generating ? (
               <span className="flex items-center gap-2">
                 <LoadingSpinner className="h-4 w-4" />
-                Generating...
+                {stage === "preparing" && "Selecting relevant chunks..."}
+                {stage === "generating" && "Calling AI model..."}
+                {stage === "parsing" && "Parsing & validating..."}
+                <span className="text-xs opacity-70">{elapsed}s</span>
               </span>
             ) : (
               "Generate Questions"

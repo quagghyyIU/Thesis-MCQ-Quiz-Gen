@@ -1,0 +1,143 @@
+{
+  "docs": [
+    {
+      "id": "it_intro",
+      "title": "Introduction to Information Technology",
+      "language": "en",
+      "chunks": [
+        "Information technology covers hardware, software, computer networks, and data. Its goal is to process, store, and transmit information efficiently.",
+        "The information processing cycle includes data collection, processing, storage, and distribution. Information systems support decision making in organizations.",
+        "Information security relies on the CIA triad: Confidentiality, Integrity, Availability. Access control and regular backups are core practices.",
+        "Cloud computing provides on-demand resources via three service models: IaaS, PaaS, and SaaS. The cloud enables fast scaling but requires cost governance.",
+        "The history of the Internet began with ARPANET in 1969 as a project of the United States Department of Defense. TCP/IP became the standard protocol suite in the 1980s.",
+        "Object-oriented programming organizes software design around data, or objects, rather than functions and logic. Key principles include encapsulation, inheritance, and polymorphism.",
+        "Sorting algorithms arrange items in order. Bubble sort runs in O(n^2) time, while merge sort and quicksort run on average in O(n log n).",
+        "Graphic design uses visual hierarchy, typography, and color theory to communicate ideas. It is distinct from coding and is unrelated to computer security policies.",
+        "The Krebs cycle is a series of biochemical reactions used by aerobic organisms to release stored energy through the oxidation of acetyl-CoA into ATP and carbon dioxide."
+      ],
+      "topics": [
+        {
+          "id": "cia_security",
+          "prompt": "Generate questions about the CIA triad and basic security practices.",
+          "ground_truth_chunks": [2],
+          "target_bloom_distribution": {
+            "remember": 0.5,
+            "understand": 0.5
+          }
+        },
+        {
+          "id": "cloud_models",
+          "prompt": "Generate questions about cloud service models and their trade-offs.",
+          "ground_truth_chunks": [3],
+          "target_bloom_distribution": {
+            "understand": 0.6,
+            "apply": 0.4
+          }
+        }
+      ]
+    },
+    {
+      "id": "db_fundamentals",
+      "title": "Relational Database Fundamentals",
+      "language": "en",
+      "chunks": [
+        "A relational database management system organizes data into tables of rows and columns. The primary key uniquely identifies each record.",
+        "Normalization reduces redundancy and inconsistencies. 1NF requires atomic values, 2NF removes partial dependencies, and 3NF removes transitive dependencies.",
+        "Indexes speed up read queries but slow down writes due to the cost of maintaining the index. The trade-off depends on workload.",
+        "Transactions follow ACID properties: Atomicity, Consistency, Isolation, and Durability, ensuring correctness under failures or concurrent access.",
+        "MapReduce is a programming model for processing large data sets with a parallel, distributed algorithm on a cluster. It is unrelated to relational normalization.",
+        "Recurrent neural networks process sequential data by maintaining hidden state across time steps. They are used in natural language processing and speech recognition.",
+        "HTTP is a stateless application layer protocol used by the World Wide Web. Cookies and tokens are typical mechanisms to add session state on top of HTTP.",
+        "Photosynthesis converts light energy into chemical energy stored in glucose. It occurs in the chloroplasts of plant cells.",
+        "The Renaissance was a period of cultural rebirth in Europe between the 14th and 17th centuries, marked by renewed interest in classical art and humanism."
+      ],
+      "topics": [
+        {
+          "id": "normalization",
+          "prompt": "Generate questions about 1NF, 2NF, and 3NF normalization.",
+          "ground_truth_chunks": [1],
+          "target_bloom_distribution": {
+            "remember": 0.4,
+            "understand": 0.6
+          }
+        },
+        {
+          "id": "acid_transactions",
+          "prompt": "Generate questions applying ACID properties to banking transactions.",
+          "ground_truth_chunks": [3],
+          "target_bloom_distribution": {
+            "understand": 0.5,
+            "apply": 0.5
+          }
+        }
+      ]
+    },
+    {
+      "id": "os_basics",
+      "title": "Operating Systems Principles",
+      "language": "en",
+      "chunks": [
+        "An operating system manages processes, memory, I/O devices, and the file system. It provides the interface between users and hardware.",
+        "Common CPU scheduling algorithms include FCFS, SJF, and Round Robin. Round Robin suits time-sharing systems thanks to its quantum.",
+        "Paging divides memory into frames and pages to avoid external fragmentation. A page fault occurs when a page is not present in RAM.",
+        "Deadlock occurs when processes wait for each other's resources. The four Coffman conditions are mutual exclusion, hold and wait, no preemption, and circular wait.",
+        "REST is an architectural style for distributed systems that uses HTTP verbs to operate on resources. It is unrelated to CPU scheduling decisions inside a kernel.",
+        "Functional programming treats computation as the evaluation of mathematical functions and avoids changing state and mutable data. Haskell and Elixir are examples.",
+        "Plate tectonics describes the large-scale motion of seven major and many minor plates of the Earth's lithosphere, causing earthquakes and forming mountains.",
+        "Keynesian economics is a macroeconomic theory of total spending in the economy and its effects on output, employment, and inflation, developed by John Maynard Keynes.",
+        "A vector space is a set of objects called vectors which can be added together and multiplied by scalars. It is a foundational concept in linear algebra."
+      ],
+      "topics": [
+        {
+          "id": "cpu_scheduling",
+          "prompt": "Generate questions comparing FCFS, SJF, and Round Robin.",
+          "ground_truth_chunks": [1],
+          "target_bloom_distribution": {
+            "understand": 0.7,
+            "analyze": 0.3
+          }
+        },
+        {
+          "id": "deadlock_conditions",
+          "prompt": "Generate questions about deadlock and the four Coffman conditions.",
+          "ground_truth_chunks": [3],
+          "target_bloom_distribution": {
+            "remember": 0.5,
+            "understand": 0.5
+          }
+        }
+      ]
+    }
+  ],
+  "exams": [
+    {
+      "id": "midterm_it",
+      "name": "IT Fundamentals Midterm",
+      "question_types": ["mcq"],
+      "difficulty_distribution": {
+        "easy": 40,
+        "medium": 40,
+        "hard": 20
+      },
+      "sample_questions": [
+        "In the CIA triad, which property ensures that data cannot be modified without authorization?",
+        "Which scenario fits the SaaS service model best?",
+        "Which of the following violates 3NF?"
+      ]
+    },
+    {
+      "id": "final_cs_core",
+      "name": "Computer Science Core Final",
+      "question_types": ["mcq", "short_answer"],
+      "difficulty_distribution": {
+        "easy": 30,
+        "medium": 50,
+        "hard": 20
+      },
+      "sample_questions": [
+        "Compare the advantages and disadvantages of indexes in a relational database management system.",
+        "Why is Round Robin generally fairer than FCFS in time-sharing systems?"
+      ]
+    }
+  ]
+}

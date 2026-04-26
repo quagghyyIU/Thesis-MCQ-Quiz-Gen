@@ -15,6 +15,10 @@ async def select_relevant_chunks(
     chunks: list[str],
     query: str = "",
     max_chunks: int = 8,
+    *,
+    user_id: int | None = None,
+    call_type: str = "chunk_select",
+    db_log: bool = True,
 ) -> list[str]:
     if len(chunks) <= max_chunks:
         return chunks
@@ -39,7 +43,7 @@ async def select_relevant_chunks(
         # to get a diverse spread of related content
         query = chunks[0][:500]
 
-    query_vec = await embed_text(query)
+    query_vec = await embed_text(query, user_id=user_id, call_type=call_type, db_log=db_log)
     top_indices = cosine_search(query_vec, stored_vecs, top_k=max_chunks)
 
     return [chunk_texts[i] for i in top_indices if i < len(chunk_texts)]
