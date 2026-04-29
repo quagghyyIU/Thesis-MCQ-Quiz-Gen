@@ -100,7 +100,8 @@ Discuss at least 3 specific areas where AI has transformed traditional practices
 - Loading: "Extracting questions & analyzing pattern..."
 - Toast: "Pattern created — 6 questions extracted"
 - Pattern card shows:
-  - Question types: `mcq: 50%`, `short_answer: 33%`, `essay: 17%`
+  - Source exam mix detected from the pasted paper
+  - Generation scope remains MCQ-only for validation and quiz practice
   - Difficulty: `easy: 50%`, `medium: 17%`, `hard: 33%`
   - "6 questions extracted"
 - Click "Show extracted questions" to verify AI correctly separated them
@@ -122,9 +123,8 @@ Discuss at least 3 specific areas where AI has transformed traditional practices
 1. Select the uploaded document as "Source Document"
 2. Select the pattern just created
 3. Set number of questions (e.g., 10)
-4. Select question types (MCQ + Short Answer + Essay)
-5. Language: Auto-detect
-6. Click "Generate Questions"
+4. Language: Auto-detect
+5. Click "Generate Questions"
 
 **While waiting (15-30 seconds), explain:**
 > "Three things happening now:
@@ -138,15 +138,15 @@ Discuss at least 3 specific areas where AI has transformed traditional practices
 **What to show advisor:**
 - Results panel shows generated questions
 - Each question has:
-  - Type badge (MCQ / Short Answer / Essay)
+  - Type badge (MCQ)
   - Difficulty badge (Easy / Medium / Hard) with color coding
 - Click "Show Answer" on a few questions to reveal answers + explanations
-- Point out that the distribution roughly matches the pattern
+- Point out that Bloom/difficulty and style follow the extracted pattern while the output stays MCQ-only
 
 **Talking point:**
-> "Notice the questions follow the same distribution as the original exam:
-> approximately 50% MCQ, 33% short answer, 17% essay.
-> The difficulty levels also match. And the content comes entirely
+> "The system reads the original exam pattern, then projects its difficulty,
+> Bloom level, and wording style into validated MCQ output.
+> The content comes entirely
 > from the uploaded lecture slides, not from the LLM's general knowledge."
 
 ---
@@ -164,12 +164,13 @@ Discuss at least 3 specific areas where AI has transformed traditional practices
   - Green "Grounded (72%)" — content verified in source
   - Yellow "Partial (35%)" — some keywords match
   - Red "Weak (12%)" — possible hallucination
+- Per-question evidence shows matched source terms, making the proxy metric easier to explain
 
 **Talking point:**
 > "This is the hallucination detection feature. It checks whether each
 > generated question is actually grounded in the source material by
-> computing keyword overlap. Questions with less than 25% overlap
-> are flagged as potentially hallucinated."
+> computing keyword overlap as a proxy metric. It does not replace lecturer
+> review, but it quickly flags low-grounding questions."
 
 ---
 
@@ -188,7 +189,22 @@ Discuss at least 3 specific areas where AI has transformed traditional practices
 
 ---
 
-### Step 6: Usage Stats (Tab: Usage) — 30 sec
+### Step 6: Dashboard Analytics (Tab: Dashboard) — 1 min
+
+**Action:** Click "Dashboard" tab
+
+**What to show:**
+- Total attempts, average score, best score, and total answered questions
+- Attempt history with "Review" button
+- Bloom breakdown showing correct/total per cognitive level
+
+**Talking point:**
+> "Generated MCQs are not just static output. Students can practice them, and
+> the system stores attempts so lecturers can inspect performance by Bloom level."
+
+---
+
+### Step 7: Usage Stats (Tab: Usage) — 30 sec
 
 **Action:** Click "Usage" tab
 
@@ -211,10 +227,26 @@ Discuss at least 3 specific areas where AI has transformed traditional practices
 | "Why not fine-tune the model?" | "Few-shot prompting achieves similar results with zero training cost and instant adaptation to any exam format." |
 | "How accurate is the pattern matching?" | "Bloom's Taxonomy verb detection is rule-based — effective for distribution analysis, though not perfect for edge cases." |
 | "Why RAG instead of feeding the whole document?" | "LLM context windows are limited. RAG selects the 8 most relevant chunks via semantic search, ensuring quality over quantity." |
-| "What about hallucination?" | "The grounding evaluator checks keyword overlap. Typically 70-85% of questions are well-grounded." |
+| "What about hallucination?" | "The grounding evaluator uses keyword overlap as a proxy metric and shows matched source terms for lecturer review. In the latest evaluation, the full system reached 0.916 average grounding vs 0.777 for vanilla generation." |
 | "Why Gemini + Groq fallback?" | "Gemini free tier has daily limits. Auto-fallback to Groq ensures the system never fails during quota exhaustion." |
 | "How does question extraction work?" | "We send raw text to Gemini with an extraction prompt. The LLM identifies question boundaries regardless of formatting." |
 | "What's the contribution vs just using ChatGPT?" | "ChatGPT generates generic questions. QuizGen replicates a specific exam pattern — same type distribution, difficulty levels, and question style." |
+
+---
+
+## Evaluation Snapshot
+
+Use the latest result table from `eval/results/_last_run.log`:
+
+| Variant | Grounding | Bloom KL | Judge Score |
+|---|---:|---:|---:|
+| Baseline vanilla | 0.777 | 15.674 | 5.000 |
+| RAG only | 0.926 | 13.098 | 4.958 |
+| Full system | 0.916 | 3.832 | 4.917 |
+
+Talking point:
+> "RAG gives the largest grounding improvement, while the full pattern-aware system
+> strongly improves Bloom distribution alignment. That is the main thesis result."
 
 ---
 

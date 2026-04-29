@@ -60,11 +60,14 @@ def _validate_questions(questions: list) -> list[dict]:
         if bloom not in VALID_BLOOM_LEVELS:
             diff = q.get("difficulty", "medium")
             bloom = {"easy": "remember", "medium": "apply", "hard": "analyze"}.get(diff, "apply")
+        options = q.get("options", [])
+        if not isinstance(options, list):
+            options = []
         validated.append({
             "id": i + 1,
-            "type": q.get("type", "mcq"),
+            "type": "mcq",
             "question": q.get("question", ""),
-            "options": q.get("options", []),
+            "options": options[:4],
             "answer": q.get("answer", ""),
             "explanation": q.get("explanation", ""),
             "difficulty": q.get("difficulty", "medium"),
@@ -202,6 +205,8 @@ async def generate_questions(
         document_id,
         chunks,
         max_chunks=8,
+        pattern=pattern,
+        difficulty_distribution=difficulty_distribution,
         user_id=user_id,
         call_type="chunk_select",
         db_log=db_log,

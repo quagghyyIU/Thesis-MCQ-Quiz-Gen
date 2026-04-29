@@ -51,8 +51,9 @@ Designed for my thesis to support lecturers in rapidly creating consistent, well
 - **History, export, and usage tracking**
   - Full history of generations (including provider + model + token usage)
   - Export to `.txt`
-  - Usage stats with provider/model/call-type/status filters
+  - Usage stats & API status dashboard with provider/model/call-type/status filters
   - Per-attempt fallback telemetry (success, quota, error, latency, attempt index)
+  - Quiz dashboard with attempt summary and Bloom-level performance breakdown
 
 ---
 
@@ -183,7 +184,7 @@ Set `GEMINI_API_KEY` (and optional `GROQ_API_KEY`, `JWT_SECRET`) in your environ
 This repo is organized by phases (see `doc/mcq_platform_roadmap.md`).
 
 - **Phase 2:** MCQ Practice Mode (done: Generate -> Start Quiz -> Submit -> Review)
-- **Phase 3 (planned):** Quiz dashboard & analytics (trend + Bloom breakdown + attempt history)
+- **Phase 3:** Quiz dashboard & analytics foundation (summary + attempt history + Bloom breakdown)
 
 ---
 
