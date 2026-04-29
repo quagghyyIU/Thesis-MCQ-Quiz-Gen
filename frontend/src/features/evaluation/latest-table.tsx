@@ -16,6 +16,13 @@ function fmt(n: string | undefined, digits = 3): string {
   return Number.isFinite(v) ? v.toFixed(digits) : n;
 }
 
+function fmtStd(mean: string | undefined, std: string | undefined, digits = 3): string {
+  const value = fmt(mean, digits);
+  if (!std) return value;
+  const s = fmt(std, digits);
+  return s === "-" ? value : `${value} ± ${s}`;
+}
+
 export function LatestTable({ rows, runId }: { rows: EvalRow[]; runId: string | null }) {
   if (!rows.length) {
     return (
@@ -42,6 +49,7 @@ export function LatestTable({ rows, runId }: { rows: EvalRow[]; runId: string | 
               <th className="py-2 pr-3">Baseline</th>
               <th className="py-2 pr-3">Provider</th>
               <th className="py-2 pr-3">Model</th>
+              <th className="py-2 pr-3 text-right">Runs</th>
               <th className="py-2 pr-3 text-right">Recall@k</th>
               <th className="py-2 pr-3 text-right">MRR</th>
               <th className="py-2 pr-3 text-right">Grounding</th>
@@ -61,13 +69,14 @@ export function LatestTable({ rows, runId }: { rows: EvalRow[]; runId: string | 
                   </Badge>
                 </td>
                 <td className="py-2 pr-3 font-mono text-xs text-muted-foreground">{r.model}</td>
-                <td className="py-2 pr-3 text-right tabular-nums">{fmt(r.recall_at_k)}</td>
-                <td className="py-2 pr-3 text-right tabular-nums">{fmt(r.mrr)}</td>
-                <td className="py-2 pr-3 text-right tabular-nums">{fmt(r.semantic_grounding)}</td>
-                <td className="py-2 pr-3 text-right tabular-nums">{fmt(r.bloom_kl)}</td>
-                <td className="py-2 pr-3 text-right tabular-nums">{fmt(r.llm_judge, 2)}</td>
-                <td className="py-2 pr-3 text-right tabular-nums">{fmt(r.diversity)}</td>
-                <td className="py-2 pr-3 text-right tabular-nums">{fmt(r.questions_returned, 1)}</td>
+                <td className="py-2 pr-3 text-right tabular-nums">{r.repeats || "1"}</td>
+                <td className="py-2 pr-3 text-right tabular-nums">{fmtStd(r.recall_at_k, r.recall_at_k_std)}</td>
+                <td className="py-2 pr-3 text-right tabular-nums">{fmtStd(r.mrr, r.mrr_std)}</td>
+                <td className="py-2 pr-3 text-right tabular-nums">{fmtStd(r.semantic_grounding, r.semantic_grounding_std)}</td>
+                <td className="py-2 pr-3 text-right tabular-nums">{fmtStd(r.bloom_kl, r.bloom_kl_std)}</td>
+                <td className="py-2 pr-3 text-right tabular-nums">{fmtStd(r.llm_judge, r.llm_judge_std, 2)}</td>
+                <td className="py-2 pr-3 text-right tabular-nums">{fmtStd(r.diversity, r.diversity_std)}</td>
+                <td className="py-2 pr-3 text-right tabular-nums">{fmtStd(r.questions_returned, r.questions_returned_std, 1)}</td>
               </tr>
             ))}
           </tbody>

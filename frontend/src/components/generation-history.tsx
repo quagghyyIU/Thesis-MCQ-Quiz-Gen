@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { api, GenerationItem, QuestionItem, QuizAttemptItem } from "@/lib/api";
@@ -21,6 +22,14 @@ interface EvaluationResult {
   details: { question_id: number; grounding_score: number; status: string }[];
 }
 
+function defaultGenerationTitle(g: GenerationItem) {
+  return `Generation #${g.id}`;
+}
+
+function displayGenerationTitle(g: GenerationItem) {
+  return g.title?.trim() || defaultGenerationTitle(g);
+}
+
 export function GenerationHistory() {
   const router = useRouter();
   const [generations, setGenerations] = useState<GenerationItem[]>([]);
@@ -28,6 +37,8 @@ export function GenerationHistory() {
   const [attempts, setAttempts] = useState<QuizAttemptItem[]>([]);
   const [evaluation, setEvaluation] = useState<EvaluationResult | null>(null);
   const [evaluating, setEvaluating] = useState(false);
+  const [titleDraft, setTitleDraft] = useState("");
+  const [savingTitle, setSavingTitle] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -48,7 +59,24 @@ export function GenerationHistory() {
 
   const handleSelect = (g: GenerationItem) => {
     setSelected(g);
+    setTitleDraft(g.title || defaultGenerationTitle(g));
     setEvaluation(null);
+  };
+
+  const handleSaveTitle = async () => {
+    if (!selected) return;
+    setSavingTitle(true);
+    try {
+      const updated = await api.updateGeneration(selected.id, { title: titleDraft });
+      setSelected(updated);
+      setTitleDraft(updated.title || defaultGenerationTitle(updated));
+      setGenerations((items) => items.map((item) => item.id === updated.id ? updated : item));
+      toast.success("Quiz title saved");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to save title");
+    } finally {
+      setSavingTitle(false);
+    }
   };
 
   const handleEvaluate = async () => {
@@ -109,13 +137,13 @@ export function GenerationHistory() {
                   onClick={() => handleSelect(g)}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Generation #{g.id}</span>
+                    <span className="truncate text-sm font-medium">{displayGenerationTitle(g)}</span>
                     <Badge variant="outline" className={getAsyncStatusClass(g.status)}>
                       {g.status}
                     </Badge>
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">
-                    {g.questions.length} questions &middot; {g.token_usage} tokens
+                    Generation #{g.id} &middot; {g.questions.length} questions &middot; {g.token_usage} tokens
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {new Date(g.created_at).toLocaleString()}
@@ -131,7 +159,7 @@ export function GenerationHistory() {
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle>
-              {selected ? `Generation #${selected.id}` : "Select a generation"}
+              {selected ? displayGenerationTitle(selected) : "Select a generation"}
             </CardTitle>
             {selected && (
               <CardDescription>
@@ -160,6 +188,17 @@ export function GenerationHistory() {
             </p>
           ) : (
             <ScrollArea className="h-[min(65vh,500px)] pr-4">
+              <div className="mb-4 flex gap-2 rounded-lg border bg-muted/30 p-3">
+                <Input
+                  value={titleDraft}
+                  onChange={(event) => setTitleDraft(event.target.value)}
+                  maxLength={120}
+                  placeholder={defaultGenerationTitle(selected)}
+                />
+                <Button variant="outline" size="sm" onClick={handleSaveTitle} disabled={savingTitle}>
+                  {savingTitle ? "Saving..." : "Save name"}
+                </Button>
+              </div>
               {evaluation && (
                 <div className="mb-4 rounded-lg border bg-muted/50 p-4 space-y-3">
                   <div className="flex items-center justify-between">

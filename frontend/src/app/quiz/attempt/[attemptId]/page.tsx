@@ -96,7 +96,7 @@ export default function AttemptReviewPage() {
     <div className="mx-auto max-w-5xl px-6 py-8 space-y-6">
       <div className="sticky top-0 z-20 -mx-2 mb-4 px-2 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/70">
         <div className="flex items-center justify-between rounded-lg border bg-card/90 px-3 py-2">
-          <p className="text-xs text-muted-foreground">Saved attempt #{attempt.id}</p>
+          <p className="truncate text-xs text-muted-foreground">Saved attempt #{attempt.id} · {attempt.generation_title || `Generation #${attempt.generation_id}`}</p>
           <Link href="/">
             <Button variant="outline" size="sm">Back to Home</Button>
           </Link>
@@ -106,7 +106,7 @@ export default function AttemptReviewPage() {
       <Card>
         <CardHeader>
           <CardTitle>Attempt Review</CardTitle>
-          <CardDescription>Generation #{attempt.generation_id}</CardDescription>
+          <CardDescription>{attempt.generation_title || `Generation #${attempt.generation_id}`}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-3 md:grid-cols-4">

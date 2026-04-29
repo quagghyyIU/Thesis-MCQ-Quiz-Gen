@@ -19,6 +19,10 @@ class GenerateRequest(BaseModel):
     difficulty_distribution: Optional[dict[str, int]] = None
 
 
+class GenerationUpdate(BaseModel):
+    title: str
+
+
 class BatchJobCreate(BaseModel):
     document_ids: list[int]
     pattern_id: Optional[int] = None

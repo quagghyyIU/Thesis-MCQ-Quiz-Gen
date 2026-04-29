@@ -1,4 +1,4 @@
-run_id,name,provider,model,recall_at_k,mrr,semantic_grounding,bloom_kl,llm_judge,diversity,questions_returned,prompt_version
-2026-04-26T17:42:26Z,baseline_vanilla,groq,groq:meta-llama/llama-4-scout-17b-16e-instruct (x6),1.0000,1.0000,0.7774,15.6738,5.0000,0.2271,6.00,v1
-2026-04-26T17:42:26Z,baseline_rag_only,groq,groq:meta-llama/llama-4-scout-17b-16e-instruct (x6),1.0000,1.0000,0.9255,13.0984,4.9583,0.1788,6.00,v1
-2026-04-26T17:42:26Z,full_system,groq,groq:meta-llama/llama-4-scout-17b-16e-instruct (x6),1.0000,1.0000,0.9162,3.8320,4.9167,0.1796,6.00,v1
+run_id,name,provider,model,repeats,recall_at_k,mrr,semantic_grounding,bloom_kl,llm_judge,diversity,questions_returned,prompt_version,recall_at_k_mean,recall_at_k_std,mrr_mean,mrr_std,semantic_grounding_mean,semantic_grounding_std,bloom_kl_mean,bloom_kl_std,llm_judge_mean,llm_judge_std,diversity_mean,diversity_std,questions_returned_mean,questions_returned_std
+2026-04-29T13:55:12Z,baseline_vanilla,groq,groq:meta-llama/llama-4-scout-17b-16e-instruct (x10),3,1.0000,1.0000,0.7912,18.0286,3.7833,0.2152,6.00,v1,1.0000,0.0000,1.0000,0.0000,0.7912,0.0048,18.0286,1.6853,3.7833,0.0946,0.2152,0.0033,6.0000,0.0000
+2026-04-29T13:55:12Z,baseline_rag_only,groq,groq:meta-llama/llama-4-scout-17b-16e-instruct (x10),3,1.0000,1.0000,0.9369,11.6357,4.0000,0.1711,6.00,v1,1.0000,0.0000,1.0000,0.0000,0.9369,0.0030,11.6357,0.9601,4.0000,0.0000,0.1711,0.0031,6.0000,0.0000
+2026-04-29T13:55:12Z,full_system,groq,groq:meta-llama/llama-4-scout-17b-16e-instruct (x10),3,1.0000,1.0000,0.9334,3.9054,4.0750,0.1731,6.00,v1,1.0000,0.0000,1.0000,0.0000,0.9334,0.0021,3.9054,0.7817,4.0750,0.1521,0.1731,0.0032,6.0000,0.0000

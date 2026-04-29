@@ -106,16 +106,41 @@
 | Component | Mô tả | Ref app cũ |
 |---|---|---|
 | **Score Overview Cards** | 4 cards: Tổng attempts, Avg score %, Best score, Tổng câu đã làm | — |
-| **Score Trend Chart** | Line chart (recharts): score % theo timeline, nhìn thấy xu hướng tiến bộ | — |
+| **Score Trend Chart** | Line chart (recharts): score/confidence % theo timeline, nhìn thấy xu hướng tiến bộ | — |
 | **Attempt History Table** | Table: ngày, document, score %, thời gian, nút "Review" | — |
 | **Bloom Breakdown** | Bar chart: % đúng per Bloom level → biết giỏi Remember nhưng yếu Analyze | — |
 | **Weak Areas** | List câu sai lặp lại nhiều nhất → gợi ý ôn tập | — |
 
 ### Definition of Done
 - [x] Dashboard page hiển thị: overview cards + attempt table
-- [ ] Line chart cho thấy xu hướng điểm lên/xuống
+- [x] Line chart cho thấy xu hướng điểm/confidence lên/xuống
+- [x] Confidence trend filter theo từng quiz/generation để không trộn nhiều quiz khác nhau
+- [x] Generation có title và có thể rename trong History để dashboard dễ đọc
 - [x] Click attempt → navigate sang review mode (Phase 2)
 - [x] Bloom breakdown chart hoạt động
+
+---
+
+## Thesis Finalization Freeze ✅
+
+**Submission window:** 04/05/2026 - 08/05/2026, giờ hành chính.
+
+### Done for final thesis evidence
+
+- [x] Workflow UX chuyển sang wizard: Source → Pattern → Generate → Review
+- [x] Manual difficulty dùng slider phân phối màu + reset
+- [x] Quiz naming trong review và rename trong History
+- [x] Per-quiz confidence trend trên Dashboard
+- [x] Evaluation mở rộng lên 10 EN/VI topics
+- [x] Core baselines chạy 3 repeats và báo mean/std
+- [x] Failure analysis xuất ra `eval/results/failure_analysis.md`
+- [x] Thesis docs thêm evaluation summary, submission checklist, screenshot manifest
+
+### Remaining before submission
+
+- [ ] Chụp screenshot cuối cùng vào `doc/screenshots/`
+- [ ] Chạy verification pass ngày 02/05/2026
+- [ ] Đóng gói source + thesis + evaluation outputs trước 03/05/2026
 
 ---
 

@@ -1,5 +1,21 @@
 # Evaluation History
 
+## Run 2026-04-29T13:55:12Z
+
+| baseline | provider | model | repeats | recall@k | mrr | grounding | bloom_kl | judge | diversity | q_returned | prompt |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| baseline_vanilla | groq | groq:meta-llama/llama-4-scout-17b-16e-instruct (x10) | 3 | 1.000 | 1.000 | 0.791 | 18.029 | 3.783 | 0.215 | 6.00 | v1 |
+| baseline_rag_only | groq | groq:meta-llama/llama-4-scout-17b-16e-instruct (x10) | 3 | 1.000 | 1.000 | 0.937 | 11.636 | 4.000 | 0.171 | 6.00 | v1 |
+| full_system | groq | groq:meta-llama/llama-4-scout-17b-16e-instruct (x10) | 3 | 1.000 | 1.000 | 0.933 | 3.905 | 4.075 | 0.173 | 6.00 | v1 |
+
+## Run 2026-04-29T10:18:35Z
+
+| baseline | provider | model | repeats | recall@k | mrr | grounding | bloom_kl | judge | diversity | q_returned | prompt |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| baseline_vanilla | groq | groq:meta-llama/llama-4-scout-17b-16e-instruct (x10) | 3 | 1.000 | 1.000 | 0.791 | 18.029 | 3.783 | 0.215 | 6.00 | v1 |
+| baseline_rag_only | groq | groq:meta-llama/llama-4-scout-17b-16e-instruct (x10) | 3 | 1.000 | 1.000 | 0.937 | 11.636 | 4.000 | 0.171 | 6.00 | v1 |
+| full_system | groq | groq:meta-llama/llama-4-scout-17b-16e-instruct (x10) | 3 | 1.000 | 1.000 | 0.933 | 3.905 | 4.075 | 0.173 | 6.00 | v1 |
+
 ## Run 2026-04-26T17:42:26Z
 
 | baseline | provider | model | recall@k | mrr | grounding | bloom_kl | judge | diversity | q_returned | prompt |
