@@ -8,6 +8,7 @@ from app.api.generations import router as generations_router
 from app.api.batch import router as batch_router
 from app.api.usage import router as usage_router
 from app.api.quiz import router as quiz_router
+from app.api.dashboard import router as dashboard_router
 
 app = FastAPI(title="QuizGen API", version="1.0.0")
 
@@ -25,6 +26,7 @@ app.include_router(generations_router, prefix="/api/generations", tags=["Generat
 app.include_router(batch_router, prefix="/api/batch", tags=["Batch"])
 app.include_router(usage_router, prefix="/api/usage", tags=["Usage"])
 app.include_router(quiz_router, prefix="/api/quiz", tags=["Quiz"])
+app.include_router(dashboard_router, prefix="/api/dashboard", tags=["Dashboard"])
 
 
 @app.on_event("startup")

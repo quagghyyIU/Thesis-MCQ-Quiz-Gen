@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { api, GenerationItem, QuestionItem } from "@/lib/api";
+import { api, GenerationItem, QuestionItem, QuizAttemptItem } from "@/lib/api";
 import { getAsyncStatusClass, getGroundingClass } from "@/lib/ui-status";
 import { toast } from "sonner";
 
@@ -24,12 +24,18 @@ export function GenerationHistory() {
   const router = useRouter();
   const [generations, setGenerations] = useState<GenerationItem[]>([]);
   const [selected, setSelected] = useState<GenerationItem | null>(null);
+  const [attempts, setAttempts] = useState<QuizAttemptItem[]>([]);
   const [evaluation, setEvaluation] = useState<EvaluationResult | null>(null);
   const [evaluating, setEvaluating] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      setGenerations(await api.getGenerations());
+      const [generationData, attemptData] = await Promise.all([
+        api.getGenerations(),
+        api.getQuizAttempts(),
+      ]);
+      setGenerations(generationData);
+      setAttempts(attemptData);
     } catch {
       toast.error("Failed to load history");
     }
@@ -78,6 +84,10 @@ export function GenerationHistory() {
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  const selectedAttempts = selected
+    ? attempts.filter((attempt) => attempt.generation_id === selected.id).slice(0, 5)
+    : [];
 
   return (
     <div className="grid gap-6 lg:grid-cols-[350px_1fr]">
@@ -171,6 +181,33 @@ export function GenerationHistory() {
                       <div className="font-mono text-lg font-bold">{Math.round(evaluation.overall_score * 100)}%</div>
                       <div className="text-muted-foreground">Avg Overlap</div>
                     </div>
+                  </div>
+                </div>
+              )}
+              {selectedAttempts.length > 0 && (
+                <div className="mb-4 rounded-lg border p-4">
+                  <div className="mb-3 flex items-center justify-between">
+                    <p className="text-sm font-medium">Saved Attempts</p>
+                    <Badge variant="outline">{selectedAttempts.length}</Badge>
+                  </div>
+                  <div className="space-y-2">
+                    {selectedAttempts.map((attempt) => (
+                      <div key={attempt.id} className="flex items-center justify-between gap-3 rounded-md border px-3 py-2">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium">Attempt #{attempt.id} · {attempt.score}%</p>
+                          <p className="text-xs text-muted-foreground">
+                            {attempt.correct_count}/{attempt.total_questions} correct · {new Date(attempt.created_at).toLocaleString()}
+                          </p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => router.push(`/quiz/attempt/${attempt.id}`)}
+                        >
+                          Review
+                        </Button>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}

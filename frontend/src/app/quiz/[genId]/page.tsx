@@ -35,13 +35,26 @@ function toChoiceLetter(value: string): string {
   return trimmed;
 }
 
-function QuizTopActions({ generationId }: { generationId: number }) {
+function QuizTopActions({
+  generationId,
+  shouldConfirmLeave = false,
+}: {
+  generationId: number;
+  shouldConfirmLeave?: boolean;
+}) {
   return (
     <div className="sticky top-0 z-20 -mx-2 mb-4 px-2 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/70">
       <div className="flex items-center justify-between rounded-lg border bg-card/90 px-3 py-2">
         <p className="text-xs text-muted-foreground">Generation #{generationId}</p>
         <div className="flex gap-2">
-          <Link href="/">
+          <Link
+            href="/"
+            onClick={(event) => {
+              if (shouldConfirmLeave && !window.confirm("Leave this quiz? Your current answers will not be submitted.")) {
+                event.preventDefault();
+              }
+            }}
+          >
             <Button variant="outline" size="sm">Back to Home</Button>
           </Link>
         </div>
@@ -95,6 +108,17 @@ export default function QuizPage() {
     }, 1000);
     return () => clearInterval(timer);
   }, [startedAt, submitResult]);
+
+  useEffect(() => {
+    if (!startedAt || submitResult) return;
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (Object.keys(answers).length === 0) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [answers, startedAt, submitResult]);
 
   const mcqQuestions = useMemo(() => {
     if (!generation) return [];
@@ -270,7 +294,7 @@ export default function QuizPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-8 space-y-4">
-      <QuizTopActions generationId={generation.id} />
+      <QuizTopActions generationId={generation.id} shouldConfirmLeave={Object.keys(answers).length > 0} />
       <Card className="overflow-hidden border-primary/20 shadow-sm transition-all duration-200 hover:shadow-md">
         <CardHeader>
           <CardTitle>Quiz Practice</CardTitle>

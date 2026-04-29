@@ -21,8 +21,13 @@ def _overlap_score(text_a: str, text_b: str) -> float:
 
 
 def evaluate_generation(questions: list[dict], source_text: str) -> dict:
+    metric_note = (
+        "Proxy metric: keyword overlap between generated question/answer/explanation "
+        "and the source document. It highlights grounding risk but does not replace "
+        "lecturer review."
+    )
     if not questions:
-        return {"overall_score": 0, "details": [], "summary": "No questions to evaluate"}
+        return {"overall_score": 0, "details": [], "summary": "No questions to evaluate", "metric_note": metric_note}
 
     source_tokens = _tokenize(source_text)
     details = []
@@ -37,10 +42,19 @@ def evaluate_generation(questions: list[dict], source_text: str) -> dict:
         combined_tokens = _tokenize(combined)
 
         if not combined_tokens:
-            details.append({"question_id": q.get("id", 0), "grounding_score": 0, "status": "ungrounded"})
+            details.append({
+                "question_id": q.get("id", 0),
+                "grounding_score": 0,
+                "status": "ungrounded",
+                "matched_terms": [],
+                "missing_terms": [],
+                "evidence": "No usable content tokens found in generated question.",
+            })
             continue
 
-        overlap = len(combined_tokens & source_tokens) / len(combined_tokens)
+        matched_terms = sorted(combined_tokens & source_tokens)
+        missing_terms = sorted(combined_tokens - source_tokens)
+        overlap = len(matched_terms) / len(combined_tokens)
         total_score += overlap
 
         status = "well_grounded" if overlap > 0.5 else "partially_grounded" if overlap > 0.25 else "poorly_grounded"
@@ -48,6 +62,12 @@ def evaluate_generation(questions: list[dict], source_text: str) -> dict:
             "question_id": q.get("id", 0),
             "grounding_score": round(overlap, 3),
             "status": status,
+            "matched_terms": matched_terms[:12],
+            "missing_terms": missing_terms[:8],
+            "evidence": (
+                f"Matched {len(matched_terms)} of {len(combined_tokens)} generated content terms "
+                f"against the source document."
+            ),
         })
 
     avg_score = total_score / len(questions) if questions else 0
@@ -60,4 +80,5 @@ def evaluate_generation(questions: list[dict], source_text: str) -> dict:
         "well_grounded_pct": round(well_grounded / len(questions) * 100, 1) if questions else 0,
         "details": details,
         "summary": f"{well_grounded}/{len(questions)} questions well-grounded in source material ({round(avg_score * 100, 1)}% avg overlap)",
+        "metric_note": metric_note,
     }

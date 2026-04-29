@@ -84,8 +84,8 @@
 
 ## A. Chốt Phase 2 thật sạch
 
-- [ ] Tick lại Definition of Done trong roadmap (đồng bộ trạng thái thực tế)
-- [ ] Confirm-before-exit khi đang làm dở quiz để tránh mất tiến trình do bấm nhầm
+- [x] Tick lại Definition of Done trong roadmap (đồng bộ trạng thái thực tế)
+- [x] Confirm-before-exit khi đang làm dở quiz để tránh mất tiến trình do bấm nhầm
 - [ ] Rà soát mobile UX cho quiz/review
 - [ ] E2E test luồng Generate -> Start Quiz -> Submit -> Review
 
@@ -93,17 +93,17 @@
 
 ### Backend
 
-- [ ] `GET /api/dashboard/summary`
-- [ ] `GET /api/dashboard/trend`
-- [ ] `GET /api/dashboard/bloom-stats`
+- [x] `GET /api/dashboard/summary`
+- [x] `GET /api/dashboard/trend`
+- [x] `GET /api/dashboard/bloom-stats`
 
 ### Frontend
 
-- [ ] Dashboard page với overview cards
+- [x] Dashboard page với overview cards
 - [ ] Line chart score trend
-- [ ] Attempt history table + nút review
-- [ ] Bloom breakdown chart
-- [ ] Navigate từ attempt sang review mode
+- [x] Attempt history table + nút review
+- [x] Bloom breakdown chart
+- [x] Navigate từ attempt sang review mode
 
 ## C. Sau dashboard (theo feedback thầy)
 
@@ -134,4 +134,4 @@
 
 - Có thể demo end-to-end: **Generate -> Quiz -> Submit -> Review**
 - Đã có nền dữ liệu attempts cho dashboard
-- Việc cần làm ngay để tạo khác biệt trong buổi review tiếp theo: **Dashboard analytics + explainability**
+- Việc cần làm ngay trước khi nộp: **rehearse demo, chụp hình kết quả eval, rà soát bản in**

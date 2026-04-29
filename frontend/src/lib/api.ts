@@ -103,6 +103,43 @@ export interface QuizAttemptDetail extends QuizAttemptItem {
   results: QuizResultItem[];
 }
 
+export interface GroundingDetail {
+  question_id: number;
+  grounding_score: number;
+  status: string;
+  matched_terms?: string[];
+  missing_terms?: string[];
+  evidence?: string;
+}
+
+export interface DashboardSummary {
+  total_attempts: number;
+  avg_score: number;
+  best_score: number;
+  total_questions_answered: number;
+  total_correct: number;
+  accuracy: number;
+}
+
+export interface DashboardTrendItem {
+  attempt_id: number;
+  generation_id: number;
+  date: string;
+  score: number;
+  correct_count: number;
+  total_questions: number;
+  time_taken_seconds: number;
+  document_name: string;
+}
+
+export interface DashboardBloomStats {
+  [level: string]: {
+    correct: number;
+    total: number;
+    accuracy: number;
+  };
+}
+
 export const api = {
   uploadDocument(file: File): Promise<DocumentItem> {
     const formData = new FormData();
@@ -167,7 +204,8 @@ export const api = {
     total_questions: number;
     well_grounded_pct: number;
     summary: string;
-    details: { question_id: number; grounding_score: number; status: string }[];
+    details: GroundingDetail[];
+    metric_note?: string;
   }> {
     return request(`/generations/${id}/evaluate`);
   },
@@ -211,5 +249,17 @@ export const api = {
 
   getQuizAttempt(id: number): Promise<QuizAttemptDetail> {
     return request(`/quiz/attempts/${id}`);
+  },
+
+  getDashboardSummary(): Promise<DashboardSummary> {
+    return request("/dashboard/summary");
+  },
+
+  getDashboardTrend(): Promise<DashboardTrendItem[]> {
+    return request("/dashboard/trend");
+  },
+
+  getDashboardBloomStats(): Promise<DashboardBloomStats> {
+    return request("/dashboard/bloom-stats");
   },
 };

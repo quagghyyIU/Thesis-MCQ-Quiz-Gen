@@ -17,7 +17,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress, ProgressLabel, ProgressValue } from "@/components/ui/progress";
-import { api, DocumentItem, PatternItem, GenerationItem, QuestionItem } from "@/lib/api";
+import { api, DocumentItem, PatternItem, GenerationItem, QuestionItem, GroundingDetail } from "@/lib/api";
 import { getDifficultyClass } from "@/lib/ui-status";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { toast } from "sonner";
@@ -59,7 +59,8 @@ function GroundingBenchmark({ evaluation }: {
     well_grounded_count: number;
     total_questions: number;
     summary: string;
-    details: { question_id: number; grounding_score: number; status: string }[];
+    details: GroundingDetail[];
+    metric_note?: string;
   };
 }) {
   const pct = evaluation.well_grounded_pct;
@@ -111,6 +112,9 @@ function GroundingBenchmark({ evaluation }: {
         <span>Avg overlap: {Math.round(evaluation.overall_score * 100)}%</span>
       </div>
       <p className="text-xs text-muted-foreground mt-2">{evaluation.summary}</p>
+      {evaluation.metric_note ? (
+        <p className="text-xs text-muted-foreground mt-1">{evaluation.metric_note}</p>
+      ) : null}
     </div>
   );
 }
@@ -226,7 +230,8 @@ export function QuestionGenerator() {
     total_questions: number;
     well_grounded_pct: number;
     summary: string;
-    details: { question_id: number; grounding_score: number; status: string }[];
+    details: GroundingDetail[];
+    metric_note?: string;
   } | null>(null);
   const [evaluating, setEvaluating] = useState(false);
 
@@ -488,7 +493,7 @@ function QuestionCard({
 }: {
   question: QuestionItem;
   index: number;
-  groundingDetail?: { question_id: number; grounding_score: number; status: string };
+  groundingDetail?: GroundingDetail;
 }) {
   const [showAnswer, setShowAnswer] = useState(false);
 
@@ -537,6 +542,15 @@ function QuestionCard({
       )}
 
       <Separator />
+
+      {groundingDetail?.evidence ? (
+        <div className="rounded-md bg-muted/50 p-3 text-xs text-muted-foreground">
+          <p>{groundingDetail.evidence}</p>
+          {groundingDetail.matched_terms?.length ? (
+            <p className="mt-1">Matched terms: {groundingDetail.matched_terms.join(", ")}</p>
+          ) : null}
+        </div>
+      ) : null}
 
       <Button variant="ghost" size="sm" onClick={() => setShowAnswer(!showAnswer)}>
         {showAnswer ? "Hide Answer" : "Show Answer"}

@@ -51,6 +51,7 @@ Designed for my thesis to support lecturers in rapidly creating consistent, well
   - Full history of generations (including provider + token usage)
   - Export to `.txt`
   - Usage stats & API status dashboard
+  - Quiz dashboard with attempt summary and Bloom-level performance breakdown
 
 ---
 
@@ -162,7 +163,7 @@ Key AI/ML components:
 This repo is organized by phases (see `doc/mcq_platform_roadmap.md`).
 
 - **Phase 2:** MCQ Practice Mode (done: Generate -> Start Quiz -> Submit -> Review)
-- **Phase 3 (planned):** Quiz dashboard & analytics (trend + Bloom breakdown + attempt history)
+- **Phase 3:** Quiz dashboard & analytics foundation (summary + attempt history + Bloom breakdown)
 
 ---
 

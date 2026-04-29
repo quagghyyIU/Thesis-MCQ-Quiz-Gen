@@ -82,10 +82,10 @@
 | **Review Mode** | Scroll list câu hỏi: highlight xanh (đúng) / đỏ (sai), show explanation + Bloom badge | `Quiz.js` review mode |
 
 ### Definition of Done
-- [ ] Generate 10 MCQ → "Start Quiz" → làm bài → submit → thấy score + review
-- [ ] Timer hiển thị elapsed time
-- [ ] Câu đúng highlight xanh, câu sai highlight đỏ + show đáp án đúng
-- [ ] Attempt được lưu DB để Dashboard đọc lại
+- [x] Generate 10 MCQ → "Start Quiz" → làm bài → submit → thấy score + review
+- [x] Timer hiển thị elapsed time
+- [x] Câu đúng highlight xanh, câu sai highlight đỏ + show đáp án đúng
+- [x] Attempt được lưu DB để Dashboard đọc lại
 
 ---
 
@@ -112,10 +112,10 @@
 | **Weak Areas** | List câu sai lặp lại nhiều nhất → gợi ý ôn tập | — |
 
 ### Definition of Done
-- [ ] Dashboard page hiển thị: overview cards + score trend chart + attempt table
+- [x] Dashboard page hiển thị: overview cards + attempt table
 - [ ] Line chart cho thấy xu hướng điểm lên/xuống
-- [ ] Click attempt → navigate sang review mode (Phase 2)
-- [ ] Bloom breakdown chart hoạt động
+- [x] Click attempt → navigate sang review mode (Phase 2)
+- [x] Bloom breakdown chart hoạt động
 
 ---
 
@@ -134,9 +134,9 @@
 
 ## Scope Cleanup (nên làm trước Phase 2)
 
-- [ ] **Bỏ multi question type selector** — Default MCQ only, ẩn short_answer/true_false/fill_blank/essay
-- [ ] **Simplify prompt** — Hardcode MCQ, bỏ "question types to include"
-- [ ] **Cleanup backend** — `question_types` vẫn giữ trong API nhưng default `["mcq"]`
+- [x] **Bỏ multi question type selector** — Default MCQ only, ẩn short_answer/true_false/fill_blank/essay
+- [x] **Simplify prompt** — Hardcode MCQ, bỏ "question types to include"
+- [x] **Cleanup backend** — `question_types` vẫn giữ trong API nhưng default `["mcq"]`
 
 ---
 

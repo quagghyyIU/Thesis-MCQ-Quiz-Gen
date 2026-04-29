@@ -93,10 +93,10 @@ export function BatchProcessor() {
   };
 
   return (
-    <div className="space-y-6">
-      <Card>
+    <div className="grid gap-4 lg:grid-cols-[380px_minmax(0,1fr)]">
+      <Card className="self-start">
         <CardHeader>
-          <CardTitle>Batch Processing</CardTitle>
+          <CardTitle className="text-base">Batch Processing</CardTitle>
           <CardDescription>
             Queue multiple documents for bulk question generation.
           </CardDescription>
@@ -104,7 +104,7 @@ export function BatchProcessor() {
         <CardContent className="space-y-5">
           <div className="space-y-2">
             <Label>Select Documents</Label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-2">
               {documents.map((d) => (
                 <div
                   key={d.id}
@@ -126,7 +126,7 @@ export function BatchProcessor() {
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-4">
             <div className="space-y-2">
               <Label>Pattern</Label>
               <Select value={selectedPattern} onValueChange={(v) => v && setSelectedPattern(v)}>
@@ -159,12 +159,14 @@ export function BatchProcessor() {
         </CardContent>
       </Card>
 
-      {batches.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Batch Jobs</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Batch Jobs</CardTitle>
+          <CardDescription>Recent bulk runs and their completion status.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {batches.length > 0 ? (
+            <div className="grid gap-3 xl:grid-cols-2">
             {batches.map((b) => (
               <div key={b.id} className="rounded-lg border p-4 space-y-2">
                 <div className="flex items-center justify-between">
@@ -179,9 +181,12 @@ export function BatchProcessor() {
                 </p>
               </div>
             ))}
-          </CardContent>
-        </Card>
-      )}
+            </div>
+          ) : (
+            <p className="py-16 text-center text-sm text-muted-foreground">No batch jobs yet.</p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

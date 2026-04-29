@@ -26,22 +26,20 @@ Your task is to generate high-quality exam questions based on provided learning 
 
 Rules:
 - Every question and answer MUST be directly supported by the source material. Do NOT invent facts.
-- Match the requested question type, difficulty, and format precisely.
+- Generate MCQ questions only.
+- Match the requested difficulty and format precisely.
 - Return ONLY valid JSON, no markdown fences or extra text.
-- For MCQ questions, provide exactly 4 options (A, B, C, D) with one correct answer.
-- For true_false questions, the answer must be "True" or "False".
-- For fill_blank questions, use "___" in the question text to indicate the blank.
+- Provide exactly 4 options (A, B, C, D) with one correct answer.
 """,
     "vi": """Bạn là chuyên gia tạo câu hỏi kiểm tra cho mục đích giáo dục.
 Nhiệm vụ của bạn là tạo câu hỏi thi chất lượng cao dựa trên tài liệu học tập được cung cấp.
 
 Quy tắc:
 - Mọi câu hỏi và câu trả lời PHẢI được hỗ trợ trực tiếp từ tài liệu nguồn. KHÔNG được bịa đặt.
-- Khớp chính xác loại câu hỏi, độ khó và định dạng được yêu cầu.
+- Chỉ tạo câu hỏi trắc nghiệm MCQ.
+- Khớp chính xác độ khó và định dạng được yêu cầu.
 - Chỉ trả về JSON hợp lệ, không có markdown hoặc văn bản thêm.
-- Với câu hỏi trắc nghiệm (MCQ), cung cấp đúng 4 lựa chọn (A, B, C, D) với một đáp án đúng.
-- Với câu hỏi đúng/sai, đáp án phải là "Đúng" hoặc "Sai".
-- Với câu hỏi điền khuyết, sử dụng "___" trong nội dung câu hỏi.
+- Cung cấp đúng 4 lựa chọn (A, B, C, D) với một đáp án đúng.
 - Tạo tất cả câu hỏi bằng tiếng Việt.
 """,
 }
@@ -55,7 +53,7 @@ QUESTION_SCHEMA = """
 Return a JSON array of objects with this exact structure:
 [
   {
-    "type": "mcq|short_answer|true_false|fill_blank|essay",
+    "type": "mcq",
     "question": "The question text",
     "options": ["A. ...", "B. ...", "C. ...", "D. ..."],
     "answer": "The correct answer",
@@ -64,7 +62,7 @@ Return a JSON array of objects with this exact structure:
     "bloom_level": "remember|understand|apply|analyze|evaluate|create"
   }
 ]
-For non-MCQ questions, "options" should be an empty array.
+All questions must be MCQ questions with exactly four options.
 Bloom's Taxonomy levels:
 - remember: Recall facts and basic concepts (define, list, name, identify)
 - understand: Explain ideas or concepts (explain, summarize, classify, compare)
@@ -89,7 +87,6 @@ VALID_BLOOM_LEVELS = set(BLOOM_DIFFICULTY_MAP.keys())
 def _build_prompt(
     chunks: list[str],
     num_questions: int,
-    question_types: list[str],
     language: str,
     pattern: dict | None,
     difficulty_distribution: dict | None = None,
@@ -99,8 +96,10 @@ def _build_prompt(
     parts = [
         f"## Source Material\n\n{context}",
         f"\n\n## Generation Instructions",
-        f"- Generate exactly {num_questions} questions",
-        f"- Question types to include: {', '.join(question_types)}",
+        f"- Generate exactly {num_questions} MCQ questions",
+        "- Every question must have type \"mcq\"",
+        "- Every question must include exactly four options labeled A, B, C, and D",
+        "- Every question must have one correct answer",
         f"- Language: {language}",
     ]
 
@@ -121,7 +120,8 @@ def _build_prompt(
     if pattern:
         config = pattern.get("pattern_config", {})
         parts.append(f"\n## Pattern Requirements")
-        parts.append(f"- Question type distribution: {json.dumps(config.get('question_types', {}))}")
+        parts.append("- Adapt the phrasing, cognitive level, and answer style from the examples while staying MCQ-only")
+        parts.append(f"- Original sample question type distribution: {json.dumps(config.get('question_types', {}))}")
         parts.append(f"- Average question length: ~{config.get('avg_length', 50)} words")
 
         sample_questions = pattern.get("sample_questions", [])
@@ -143,11 +143,14 @@ def _validate_questions(questions: list) -> list[dict]:
         if bloom not in VALID_BLOOM_LEVELS:
             diff = q.get("difficulty", "medium")
             bloom = {"easy": "remember", "medium": "apply", "hard": "analyze"}.get(diff, "apply")
+        options = q.get("options", [])
+        if not isinstance(options, list):
+            options = []
         validated.append({
             "id": i + 1,
-            "type": q.get("type", "mcq"),
+            "type": "mcq",
             "question": q.get("question", ""),
-            "options": q.get("options", []),
+            "options": options[:4],
             "answer": q.get("answer", ""),
             "explanation": q.get("explanation", ""),
             "difficulty": q.get("difficulty", "medium"),
@@ -353,8 +356,14 @@ async def generate_questions(
     if question_types is None:
         question_types = ["mcq"]
 
-    relevant = await select_relevant_chunks(document_id, chunks, max_chunks=8)
-    prompt = _build_prompt(relevant, num_questions, question_types, language, pattern, difficulty_distribution)
+    relevant = await select_relevant_chunks(
+        document_id,
+        chunks,
+        max_chunks=8,
+        pattern=pattern,
+        difficulty_distribution=difficulty_distribution,
+    )
+    prompt = _build_prompt(relevant, num_questions, language, pattern, difficulty_distribution)
 
     cache_key = hashlib.md5(prompt.encode()).hexdigest()
     if cache_key in _cache:
