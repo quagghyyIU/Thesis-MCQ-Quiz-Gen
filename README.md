@@ -15,7 +15,8 @@ Designed for my thesis to support lecturers in rapidly creating consistent, well
   - Store vectors in SQLite for fast semantic search
 
 - **Exam pattern extraction**
-  - Paste a full exam paper (headers, student info, etc.)
+  - Paste a full exam paper **or upload** `PDF/DOCX/PPTX`
+  - Optional **custom instructions** (toggle on/off) to constrain extraction/generation behavior
   - LLM automatically:
     - Detects question boundaries
     - Estimates difficulty using **Bloom’s Taxonomy** verbs
@@ -48,9 +49,10 @@ Designed for my thesis to support lecturers in rapidly creating consistent, well
     - Weak (red)
 
 - **History, export, and usage tracking**
-  - Full history of generations (including provider + token usage)
+  - Full history of generations (including provider + model + token usage)
   - Export to `.txt`
-  - Usage stats & API status dashboard
+  - Usage stats & API status dashboard with provider/model/call-type/status filters
+  - Per-attempt fallback telemetry (success, quota, error, latency, attempt index)
   - Quiz dashboard with attempt summary and Bloom-level performance breakdown
 
 ---
@@ -68,7 +70,7 @@ User uploads slides ──► Chunk ──► Embed ──► Store vectors     
                               │                                          │
                     Build few‑shot prompt (pattern + examples + chunks)
                               │
-                    Gemini API (fallback: Groq)
+                    Global LLM Router (flat fallback chain across providers/models)
                               │
                     Parse + validate questions
                               │
@@ -82,7 +84,8 @@ Key AI/ML components:
 - Retrieval-Augmented Generation (RAG)
 - Bloom’s Taxonomy–based difficulty analysis
 - LLM-based question extraction and pattern analysis
-- Multi-provider fallback (Gemini → Groq) and response caching
+- Global provider+model fallback chain for all AI calls
+- Per-attempt AI call logging (`provider`, `model`, `status`, `latency_ms`, `attempt_idx`)
 
 ---
 
@@ -92,11 +95,11 @@ Key AI/ML components:
   - Python (FastAPI)
   - SQLite (metadata + vector store)
   - PyMuPDF / docx / pptx processors
-  - Gemini API (embeddings + generation) with Groq fallback
+  - Global AI router over Groq/Gemini/Ollama with automatic fallback
 
 - **Frontend**
   - Next.js 16 + React 19 + shadcn/ui + Tailwind CSS 4
-  - Tabs: `Generate`, `Documents`, `Patterns`, `Batch`, `History`, `Usage`
+  - Tabs: `Generate`, `Documents`, `Patterns`, `Batch`, `History`, `Usage`, `Evaluation` (admin only)
 
 ---
 
@@ -110,10 +113,11 @@ Key AI/ML components:
 
 ### 4.2. Setup
 
-1. Create `.env` in the `backend/` folder:
+1. Create `.env` in the `backend/` folder (see `backend/.env.example`):
 
    ```env
    GEMINI_API_KEY=your_key_here
+   JWT_SECRET=your-secret-at-least-32-chars
    ```
 
 2. Install dependencies (backend + frontend) as described in project docs (or thesis report).
@@ -124,9 +128,21 @@ Key AI/ML components:
    start-all.bat
    ```
 
-4. Verify services:
+4. Open `http://localhost:3000`, **register** a user on `/login`, then use the app. All API routes except `/api/auth/*`, `/api/health`, and OpenAPI docs require a JWT.
+
+5. Verify services:
    - Backend Swagger: `http://localhost:8000/docs`
    - Frontend UI: `http://localhost:3000`
+
+### 4.3 Docker
+
+From the repo root:
+
+```bash
+docker compose up --build
+```
+
+Set `GEMINI_API_KEY` (and optional `GROQ_API_KEY`, `JWT_SECRET`) in your environment or a `.env` file next to `docker-compose.yml`. Data is persisted in the `quizgen-data` volume (`quizgen.db` and uploads under `/app/data` in the backend container).
 
 ---
 
@@ -138,7 +154,8 @@ Key AI/ML components:
 
 2. **Create exam pattern** (`Patterns` tab)
    - Click **New Pattern**
-   - Paste a full past exam (no manual formatting needed)
+   - Choose source: paste text or upload file
+   - (Optional) enable custom instructions
    - System extracts questions and builds pattern statistics
 
 3. **Generate questions** (`Generate` tab)
@@ -155,6 +172,10 @@ Key AI/ML components:
 5. **Evaluate accuracy & history/export**
    - Click **Evaluate Accuracy** to see grounding scores per question
    - `History` tab: open any past run and export to `.txt` (completed runs also expose **Start Quiz**)
+
+6. **Monitor fallback behavior** (`Usage` tab)
+   - Filter by provider/model/call type/status
+   - Inspect fallback events and model usage distribution
 
 ---
 
@@ -174,3 +195,45 @@ This project is developed as part of my bachelor thesis on:
 > **Pattern-aware, RAG-based generation of exam questions from lecture materials using LLMs (Gemini) with hallucination detection.**
 
 If you are my advisor or reviewer, the detailed demo script is in `SHOWCASE.md`.
+
+---
+
+## 8. Reproducing Evaluation Results
+
+1. Ensure backend dependencies are installed and environment variables are configured (`GEMINI_API_KEY` required).
+2. Review reproducible run settings in `eval/config.yaml`:
+   - `seed`, `top_k`, `chunk_size`, `chunk_overlap`
+   - `embedding_model`, `llm_model`, `llm_temperature`
+   - `prompt_version`
+3. Run the evaluation pipeline from repo root:
+
+   ```bash
+   set PYTHONPATH=backend && python eval/run_eval.py --config eval/config.yaml
+   ```
+
+4. Check outputs:
+   - `eval/results/comparison.csv` (latest snapshot)
+   - `eval/results/runs.csv` (append-only run history)
+   - `eval/results/history.md` (human-readable run log)
+5. Each generation row now stores `config_snapshot` and `prompt_version` in SQLite for traceable reruns.
+
+## 9. Current Thesis Maturity (Self-Assessment)
+
+### Current level: **Strong implementation / near thesis-demo ready**
+
+The project is already beyond a basic prototype:
+- End-to-end product loop is complete (ingest → pattern extraction → generation → quiz practice → evaluation).
+- Reproducibility and evaluation pipeline are in place (`eval/config.yaml`, golden dataset, comparison baselines).
+- Production-safety mechanisms exist (global fallback, quota/error handling, per-user limits, structured errors).
+- Admin-facing evaluation dashboard and usage telemetry are implemented.
+
+### What is still needed for a strong final thesis defense
+
+To move from “good system build” to “high-scoring thesis contribution”, focus on:
+- **Experimental rigor**: report repeated runs, variance/confidence intervals, and statistical significance.
+- **Method comparison clarity**: clearly separate gains from RAG, pattern conditioning, and model choice.
+- **Ablation + failure analysis**: show where the approach fails (domain shift, noisy docs, long context).
+- **Security/reliability evidence**: brief load/rate-limit test results and failure-recovery traces.
+- **Thesis writing quality**: tighten related work positioning and explicitly state novelty/limitations.
+
+If these items are completed cleanly, this is at a level that can support a solid bachelor thesis and potentially an excellent defense depending on report quality and experimental discipline.

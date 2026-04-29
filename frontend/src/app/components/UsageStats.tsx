@@ -11,9 +11,14 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { RefreshCw } from "lucide-react";
-
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+import { Input } from "@/components/ui/input";
+import {
+  api,
+  type UsageStatsData,
+  type QuotaCheckResult,
+  type UsageCallRow,
+  type UsageOptions,
+} from "@/lib/api";
 
 interface CallBreakdown {
   type: string;
@@ -28,25 +33,15 @@ interface ProviderBreakdown {
   tokens: number;
 }
 
-interface UsageData {
+interface ModelBreakdown {
+  provider: string;
   model: string;
-  total_tokens_used: number;
-  total_generations: number;
-  total_api_calls: number;
-  today_tokens: number;
-  failed_generations: number;
-  daily_history: Array<{ date: string; tokens: number; generations: number }>;
-  call_breakdown: CallBreakdown[];
-  provider_breakdown: ProviderBreakdown[];
+  count: number;
+  tokens: number;
 }
 
-interface QuotaCheck {
-  status: string;
-  model?: string;
-  input_token_limit?: number;
-  output_token_limit?: number;
-  error?: string;
-}
+type UsageData = UsageStatsData;
+type QuotaCheck = QuotaCheckResult;
 
 const TASK_LABELS: Record<string, string> = {
   question_generation: "Question Generation",
@@ -63,16 +58,26 @@ const PROVIDER_COLORS: Record<string, string> = {
 export function UsageStats() {
   const [stats, setStats] = useState<UsageData | null>(null);
   const [quota, setQuota] = useState<QuotaCheck | null>(null);
+  const [options, setOptions] = useState<UsageOptions | null>(null);
+  const [fallbackEvents, setFallbackEvents] = useState<UsageCallRow[]>([]);
+  const [providerFilter, setProviderFilter] = useState("");
+  const [modelFilter, setModelFilter] = useState("");
+  const [callTypeFilter, setCallTypeFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
   const [loading, setLoading] = useState(true);
 
   const fetchStats = async () => {
     try {
-      const [statsRes, quotaRes] = await Promise.all([
-        fetch(`${API_BASE}/usage/`),
-        fetch(`${API_BASE}/usage/check-quota`),
+      const [statsData, quotaData, usageOptions, fallbackRows] = await Promise.all([
+        api.getUsageStats(),
+        api.checkGeminiQuota(),
+        api.getUsageOptions(),
+        api.getUsageCalls({ status: "ok", limit: 200 }),
       ]);
-      setStats(await statsRes.json());
-      setQuota(await quotaRes.json());
+      setStats(statsData);
+      setQuota(quotaData);
+      setOptions(usageOptions);
+      setFallbackEvents(fallbackRows.filter((r) => r.attempt_idx > 0));
     } catch (e) {
       console.error("Failed to fetch usage stats:", e);
     } finally {
@@ -101,9 +106,85 @@ export function UsageStats() {
     },
     {} as Record<string, CallBreakdown[]>,
   );
+  const totalModelTokens = stats.model_breakdown.reduce((sum, item) => sum + item.tokens, 0);
+  const filteredModelBreakdown = stats.model_breakdown.filter((item) => {
+    if (providerFilter && item.provider !== providerFilter) return false;
+    if (modelFilter && item.model !== modelFilter) return false;
+    return true;
+  });
+  const filteredFallbackEvents = fallbackEvents.filter((item) => {
+    if (providerFilter && item.provider !== providerFilter) return false;
+    if (modelFilter && item.model !== modelFilter) return false;
+    if (callTypeFilter && item.call_type !== callTypeFilter) return false;
+    return statusFilter ? item.status === statusFilter : true;
+  });
 
   return (
     <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Filters</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-3 md:grid-cols-4">
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">Provider</p>
+            <Input
+              list="providers-list"
+              value={providerFilter}
+              onChange={(e) => setProviderFilter(e.target.value)}
+              placeholder="all providers"
+            />
+            <datalist id="providers-list">
+              {(options?.providers || []).map((provider) => (
+                <option key={provider} value={provider} />
+              ))}
+            </datalist>
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">Model</p>
+            <Input
+              list="models-list"
+              value={modelFilter}
+              onChange={(e) => setModelFilter(e.target.value)}
+              placeholder="all models"
+            />
+            <datalist id="models-list">
+              {(options?.models || []).map((model) => (
+                <option key={model} value={model} />
+              ))}
+            </datalist>
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">Call type</p>
+            <Input
+              list="call-types-list"
+              value={callTypeFilter}
+              onChange={(e) => setCallTypeFilter(e.target.value)}
+              placeholder="all call types"
+            />
+            <datalist id="call-types-list">
+              {(options?.call_types || []).map((callType) => (
+                <option key={callType} value={callType} />
+              ))}
+            </datalist>
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">Status</p>
+            <Input
+              list="statuses-list"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              placeholder="all statuses"
+            />
+            <datalist id="statuses-list">
+              {(options?.statuses || []).map((status) => (
+                <option key={status} value={status} />
+              ))}
+            </datalist>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Overview */}
       <Card>
         <CardHeader>
@@ -124,6 +205,7 @@ export function UsageStats() {
             <StatBox label="Today" value={stats.today_tokens.toLocaleString()} />
             <StatBox label="Generations" value={stats.total_generations} />
             <StatBox label="API Calls" value={stats.total_api_calls} />
+            <StatBox label="Fallback Today" value={stats.fallback_today} />
           </div>
 
           {quota && (
@@ -244,6 +326,61 @@ export function UsageStats() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>By Model</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {filteredModelBreakdown.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No model usage for current filter</p>
+          ) : (
+            <div className="space-y-3">
+              {filteredModelBreakdown.map((m: ModelBreakdown) => {
+                const pct = totalModelTokens > 0 ? Math.round((m.tokens / totalModelTokens) * 100) : 0;
+                return (
+                  <div key={`${m.provider}-${m.model}`} className="space-y-1">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="truncate">
+                        <Badge variant="secondary" className="mr-2">{m.provider}</Badge>
+                        {m.model}
+                      </span>
+                      <span className="font-mono text-xs">
+                        {m.count} calls · {m.tokens.toLocaleString()} tok ({pct}%)
+                      </span>
+                    </div>
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                      <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Fallback Events Today</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {filteredFallbackEvents.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No fallback events for current filter</p>
+          ) : (
+            <div className="space-y-2">
+              {filteredFallbackEvents.slice(0, 20).map((row) => (
+                <div key={row.id} className="text-xs text-muted-foreground flex items-center justify-between">
+                  <span className="truncate">
+                    {row.created_at} · {row.call_type} · {row.provider}:{row.model}
+                  </span>
+                  <span className="font-mono">attempt {row.attempt_idx}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Daily History */}
       {stats.daily_history.length > 0 && (

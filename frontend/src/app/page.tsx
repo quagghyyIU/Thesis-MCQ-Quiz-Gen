@@ -2,10 +2,14 @@
 
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/mode-toggle";
+import { ProtectedApp } from "@/components/protected-app";
+import { useAuth } from "@/contexts/auth-provider";
 import {
   BatchProcessor,
   Dashboard,
+  EvaluationDashboard,
   GenerationHistory,
   UsageStats,
   WorkflowHub,
@@ -19,14 +23,19 @@ const NAV_ITEMS = [
   { value: 4, label: "Usage", icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" },
 ];
 
-export default function Home() {
+const EVAL_TAB = { value: 6, label: "Evaluation", icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zM3 12V5a2 2 0 012-2h14a2 2 0 012 2v14a2 2 0 01-2 2H7" };
+
+function HomeContent() {
+  const { user, logout } = useAuth();
   const [refreshKey, setRefreshKey] = useState(0);
   const refresh = () => setRefreshKey((k) => k + 1);
+  const isAdmin = user?.role === "admin";
+  const navItems = isAdmin ? [...NAV_ITEMS, EVAL_TAB] : NAV_ITEMS;
 
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b bg-gradient-to-r from-primary/5 via-background to-primary/5 backdrop-blur-sm sticky top-0 z-40">
-        <div className="mx-auto max-w-7xl px-6 py-4 flex items-center justify-between">
+        <div className="mx-auto max-w-7xl px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground font-bold text-sm shadow-md shadow-primary/25">
               Q
@@ -38,14 +47,22 @@ export default function Home() {
               </p>
             </div>
           </div>
-          <ModeToggle />
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground hidden sm:inline">
+              {user?.username}
+            </span>
+            <Button variant="outline" size="sm" onClick={logout}>
+              Log out
+            </Button>
+            <ModeToggle />
+          </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-[1360px] px-5 py-5">
         <Tabs defaultValue={0} className="space-y-6">
           <TabsList className="inline-flex w-full">
-            {NAV_ITEMS.map((item) => (
+            {navItems.map((item) => (
               <TabsTrigger key={item.label} value={item.value}>
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d={item.icon} />
@@ -74,8 +91,22 @@ export default function Home() {
           <TabsContent value={4}>
             <UsageStats />
           </TabsContent>
+
+          {isAdmin && (
+            <TabsContent value={6}>
+              <EvaluationDashboard />
+            </TabsContent>
+          )}
         </Tabs>
       </main>
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <ProtectedApp>
+      <HomeContent />
+    </ProtectedApp>
   );
 }

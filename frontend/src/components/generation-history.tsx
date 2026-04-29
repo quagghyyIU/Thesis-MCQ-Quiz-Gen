@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { api, GenerationItem, QuestionItem, QuizAttemptItem } from "@/lib/api";
 import { getAsyncStatusClass, getGroundingClass } from "@/lib/ui-status";
 import { toast } from "sonner";
+import { BloomBadge } from "@/components/bloom-badge";
 
 interface EvaluationResult {
   overall_score: number;
@@ -68,7 +69,7 @@ export function GenerationHistory() {
     if (!selected) return;
     const text = selected.questions
       .map((q: QuestionItem, i: number) => {
-        let out = `${i + 1}. [${q.type.toUpperCase()}] ${q.question}`;
+        let out = `${i + 1}. [${q.type.toUpperCase()}] [Bloom: ${q.bloom_level || "n/a"}] ${q.question}`;
         if (q.options.length) out += "\n" + q.options.join("\n");
         out += `\nAnswer: ${q.answer}`;
         if (q.explanation) out += `\nExplanation: ${q.explanation}`;
@@ -256,7 +257,8 @@ function HistoryQuestionCard({
           <span className="text-muted-foreground mr-1">Q{index}.</span>
           {question.question}
         </p>
-        <div className="flex gap-1 shrink-0">
+        <div className="flex flex-wrap gap-1 shrink-0 justify-end">
+          <BloomBadge level={question.bloom_level} />
           <Badge variant="secondary">{question.type}</Badge>
           {grounding && (
             <Badge variant="outline" className={getGroundingClass(grounding.status)}>

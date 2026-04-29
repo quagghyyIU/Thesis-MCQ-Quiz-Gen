@@ -17,6 +17,10 @@ async def select_relevant_chunks(
     max_chunks: int = 8,
     pattern: dict | None = None,
     difficulty_distribution: dict | None = None,
+    *,
+    user_id: int | None = None,
+    call_type: str = "chunk_select",
+    db_log: bool = True,
 ) -> list[str]:
     if len(chunks) <= max_chunks:
         return chunks
@@ -39,7 +43,7 @@ async def select_relevant_chunks(
     if not query:
         query = _build_retrieval_query(chunks, pattern, difficulty_distribution)
 
-    query_vec = await embed_text(query)
+    query_vec = await embed_text(query, user_id=user_id, call_type=call_type, db_log=db_log)
     top_indices = cosine_search(query_vec, stored_vecs, top_k=max_chunks)
 
     return [chunk_texts[i] for i in top_indices if i < len(chunk_texts)]

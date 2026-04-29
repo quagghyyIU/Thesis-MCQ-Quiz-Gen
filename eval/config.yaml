@@ -1,0 +1,88 @@
+defaults:
+  seed: 42
+  top_k: 3
+  chunk_size: 2000
+  chunk_overlap: 200
+  embedding_model: gemini-embedding-001
+  llm_model: gemini-2.5-flash
+  llm_temperature: 0.7
+  prompt_version: v1
+  num_questions: 6
+  question_types:
+    - mcq
+  judge_model: gemini-2.5-flash
+
+datasets:
+  path: eval/datasets/golden.json
+
+output:
+  comparison_csv: eval/results/comparison.csv
+
+baselines:
+  - name: baseline_vanilla
+    mode: vanilla
+    use_pattern: false
+    top_k: 1
+    force_provider: groq
+    force_model: meta-llama/llama-4-scout-17b-16e-instruct
+  - name: baseline_rag_only
+    mode: rag_only
+    use_pattern: false
+    top_k: 3
+    force_provider: groq
+    force_model: meta-llama/llama-4-scout-17b-16e-instruct
+  - name: full_system
+    mode: full_system
+    use_pattern: true
+    top_k: 3
+    force_provider: groq
+    force_model: meta-llama/llama-4-scout-17b-16e-instruct
+  - name: baseline_local_llm
+    mode: full_system
+    use_pattern: true
+    top_k: 3
+    force_provider: ollama
+  - name: model_ollama_gemma4_e4b
+    mode: full_system
+    use_pattern: true
+    top_k: 3
+    force_provider: ollama
+    force_model: gemma4:e4b-it-q4_K_M
+
+  # Model comparison: same full_system pipeline, different LLMs
+  - name: model_groq_llama_70b
+    mode: full_system
+    use_pattern: true
+    top_k: 3
+    force_provider: groq
+    force_model: llama-3.3-70b-versatile
+  - name: model_groq_llama_8b
+    mode: full_system
+    use_pattern: true
+    top_k: 3
+    force_provider: groq
+    force_model: llama-3.1-8b-instant
+  - name: model_groq_llama4_scout
+    mode: full_system
+    use_pattern: true
+    top_k: 3
+    force_provider: groq
+    force_model: meta-llama/llama-4-scout-17b-16e-instruct
+  - name: model_groq_qwen3_32b
+    mode: full_system
+    use_pattern: true
+    top_k: 3
+    force_provider: groq
+    force_model: qwen/qwen3-32b
+  - name: model_groq_gpt_oss_120b
+    mode: full_system
+    use_pattern: true
+    top_k: 3
+    force_provider: groq
+    force_model: openai/gpt-oss-120b
+  - name: model_gemini_flash
+    mode: full_system
+    use_pattern: true
+    top_k: 3
+    force_provider: gemini
+    force_model: gemini-2.5-flash
