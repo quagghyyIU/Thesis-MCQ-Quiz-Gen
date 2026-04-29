@@ -6,7 +6,7 @@
 - `documents`: uploaded source materials and processed chunks.
 - `chunk_embeddings`: vectorized chunks for semantic retrieval.
 - `patterns`: extracted exam templates and sample questions.
-- `generations`: generated questions + prompt/config metadata for reproducibility.
+- `generations`: named generated quizzes + prompt/config metadata for reproducibility.
 - `quiz_attempts`: learner answers and score snapshots.
 - `api_calls`: provider usage and token accounting.
 
@@ -54,6 +54,7 @@ erDiagram
     GENERATIONS {
       int id PK
       int user_id FK
+      string title
       int document_id FK
       int pattern_id FK
       text prompt_used

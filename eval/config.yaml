@@ -1,5 +1,6 @@
 defaults:
   seed: 42
+  repeats: 3
   top_k: 3
   chunk_size: 2000
   chunk_overlap: 200

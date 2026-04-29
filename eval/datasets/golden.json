@@ -105,6 +105,60 @@
             "remember": 0.5,
             "understand": 0.5
           }
+        },
+        {
+          "id": "paging_faults",
+          "prompt": "Generate questions about paging, frames, pages, and page faults.",
+          "ground_truth_chunks": [2],
+          "target_bloom_distribution": {
+            "remember": 0.4,
+            "understand": 0.4,
+            "apply": 0.2
+          }
+        }
+      ]
+    },
+    {
+      "id": "vn_network_security",
+      "title": "An toàn mạng căn bản",
+      "language": "vi",
+      "chunks": [
+        "An toàn mạng bảo vệ hệ thống máy tính khỏi truy cập trái phép, rò rỉ dữ liệu và tấn công làm gián đoạn dịch vụ.",
+        "Tường lửa kiểm soát lưu lượng mạng dựa trên luật cho phép hoặc chặn gói tin. Nó giúp giảm nguy cơ truy cập không mong muốn.",
+        "Mã hóa biến dữ liệu gốc thành dạng khó đọc nếu không có khóa giải mã. HTTPS sử dụng TLS để bảo vệ dữ liệu khi truyền qua mạng.",
+        "Xác thực đa yếu tố yêu cầu người dùng cung cấp ít nhất hai bằng chứng như mật khẩu và mã OTP, giúp giảm rủi ro khi mật khẩu bị lộ.",
+        "Sao lưu định kỳ giúp khôi phục dữ liệu sau lỗi phần cứng, mã độc tống tiền hoặc thao tác xóa nhầm.",
+        "Cây nhị phân là cấu trúc dữ liệu trong đó mỗi nút có tối đa hai nút con. Nội dung này không liên quan trực tiếp đến tường lửa.",
+        "Quản trị dự án Agile chia công việc thành các vòng lặp ngắn gọi là sprint để nhận phản hồi thường xuyên từ khách hàng."
+      ],
+      "topics": [
+        {
+          "id": "firewall_rules",
+          "prompt": "Tạo câu hỏi về vai trò của tường lửa và luật kiểm soát lưu lượng mạng.",
+          "ground_truth_chunks": [1],
+          "target_bloom_distribution": {
+            "remember": 0.4,
+            "understand": 0.6
+          }
+        },
+        {
+          "id": "mfa_security",
+          "prompt": "Tạo câu hỏi áp dụng xác thực đa yếu tố trong tình huống mật khẩu bị lộ.",
+          "ground_truth_chunks": [3],
+          "target_bloom_distribution": {
+            "understand": 0.5,
+            "apply": 0.5
+          }
+        },
+        {
+          "id": "backup_recovery",
+          "prompt": "Tạo câu hỏi về sao lưu định kỳ và khôi phục dữ liệu sau sự cố.",
+          "ground_truth_chunks": [4],
+          "target_bloom_distribution": {
+            "remember": 0.3,
+            "understand": 0.5,
+            "apply": 0.2
+          }
         }
       ]
     }

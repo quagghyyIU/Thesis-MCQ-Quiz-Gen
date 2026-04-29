@@ -38,15 +38,17 @@ function toChoiceLetter(value: string): string {
 
 function QuizTopActions({
   generationId,
+  title,
   shouldConfirmLeave = false,
 }: {
   generationId: number;
+  title?: string;
   shouldConfirmLeave?: boolean;
 }) {
   return (
     <div className="sticky top-0 z-20 -mx-2 mb-4 px-2 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/70">
       <div className="flex items-center justify-between rounded-lg border bg-card/90 px-3 py-2">
-        <p className="text-xs text-muted-foreground">Generation #{generationId}</p>
+        <p className="truncate text-xs text-muted-foreground">{title || `Generation #${generationId}`}</p>
         <div className="flex gap-2">
           <Link
             href="/"
@@ -194,7 +196,7 @@ function QuizPageContent() {
   if (!generation || !mcqQuestions.length) {
     return (
       <div className="mx-auto max-w-4xl px-6 py-10">
-        {generation ? <QuizTopActions generationId={generation.id} /> : null}
+        {generation ? <QuizTopActions generationId={generation.id} title={generation.title} /> : null}
         <Card>
           <CardHeader>
             <CardTitle>Quiz unavailable</CardTitle>
@@ -213,11 +215,11 @@ function QuizPageContent() {
   if (submitResult) {
     return (
       <div className="mx-auto max-w-5xl px-6 py-8 space-y-6">
-        <QuizTopActions generationId={generation.id} />
+        <QuizTopActions generationId={generation.id} title={generation.title} />
         <Card className="transition-all duration-200 hover:shadow-md">
           <CardHeader>
             <CardTitle>Score Summary</CardTitle>
-            <CardDescription>Generation #{generation.id}</CardDescription>
+            <CardDescription>{generation.title || `Generation #${generation.id}`}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-3 md:grid-cols-4">
@@ -316,12 +318,12 @@ function QuizPageContent() {
   if (!sessionStarted) {
     return (
       <div className="mx-auto max-w-4xl px-6 py-8 space-y-4">
-        <QuizTopActions generationId={generation.id} />
+        <QuizTopActions generationId={generation.id} title={generation.title} />
         <Card>
           <CardHeader>
             <CardTitle>Ready to practice</CardTitle>
             <CardDescription>
-              Generation #{generation.id} · {mcqQuestions.length} MCQ · timer starts when you begin
+              {(generation.title || `Generation #${generation.id}`)} · {mcqQuestions.length} MCQ · timer starts when you begin
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -336,12 +338,12 @@ function QuizPageContent() {
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-8 space-y-4">
-      <QuizTopActions generationId={generation.id} shouldConfirmLeave={Object.keys(answers).length > 0} />
+      <QuizTopActions generationId={generation.id} title={generation.title} shouldConfirmLeave={Object.keys(answers).length > 0} />
       <Card className="overflow-hidden border-primary/20 shadow-sm transition-all duration-200 hover:shadow-md">
         <CardHeader>
           <CardTitle>Quiz Practice</CardTitle>
           <CardDescription>
-            Generation #{generation.id} • Question {currentIndex + 1}/{mcqQuestions.length}
+            {(generation.title || `Generation #${generation.id}`)} • Question {currentIndex + 1}/{mcqQuestions.length}
           </CardDescription>
           <div className="mt-2 h-2 w-full rounded-full bg-muted">
             <div

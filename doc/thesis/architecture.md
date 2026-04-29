@@ -2,7 +2,7 @@
 
 ## Components
 
-- `frontend` (Next.js): authentication, upload flow, generation UI, quiz practice, history.
+- `frontend` (Next.js): authentication, guided generation wizard, quiz practice, history, dashboard.
 - `backend` (FastAPI): auth/JWT, document processing, pattern extraction, generation, evaluation, usage.
 - `SQLite`: users, documents, chunks/embeddings, patterns, generations, quiz_attempts, api_calls.
 - `LLM services`: Gemini for generation + embeddings, Groq as generation fallback.
@@ -59,7 +59,7 @@ sequenceDiagram
     participant EV as Accuracy Evaluator
     participant DB as SQLite
 
-    U->>F: Request generation
+    U->>F: Source -> Pattern -> Generate with quiz title
     F->>G: POST /api/generations (JWT)
     G->>R: Retrieve top-k relevant chunks
     R-->>G: selected chunks
@@ -69,4 +69,25 @@ sequenceDiagram
     U->>F: Evaluate run
     F->>EV: GET /api/generations/{id}/evaluate
     EV-->>F: Semantic grounding + keyword baseline
+```
+
+## Sequence: Practice + Confidence Trend
+
+```mermaid
+sequenceDiagram
+    actor U as User
+    participant F as Frontend
+    participant Q as Quiz API
+    participant D as Dashboard API
+    participant DB as SQLite
+
+    U->>F: Start named generated quiz
+    F->>Q: GET /api/generations/{id}
+    U->>F: Submit answers
+    F->>Q: POST /api/quiz/submit
+    Q->>DB: Store quiz_attempts score
+    U->>F: Open Dashboard
+    F->>D: GET /api/dashboard/trend
+    D->>DB: Load attempts grouped by generation
+    D-->>F: Per-quiz confidence trend
 ```

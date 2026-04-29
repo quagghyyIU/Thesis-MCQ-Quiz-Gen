@@ -73,7 +73,7 @@ function HomeContent() {
           </TabsList>
 
           <TabsContent value={0}>
-            <WorkflowHub key={refreshKey} onDataChanged={refresh} />
+            <WorkflowHub onDataChanged={refresh} />
           </TabsContent>
 
           <TabsContent value={1}>

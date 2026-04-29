@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS patterns (
 CREATE TABLE IF NOT EXISTS generations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER,
+    title TEXT NOT NULL DEFAULT '',
     document_id INTEGER NOT NULL,
     pattern_id INTEGER,
     prompt_used TEXT NOT NULL DEFAULT '',
@@ -162,6 +163,11 @@ def _migrate_db(db):
         db.execute("SELECT config_snapshot FROM generations LIMIT 1")
     except sqlite3.OperationalError:
         db.execute("ALTER TABLE generations ADD COLUMN config_snapshot TEXT NOT NULL DEFAULT '{}'")
+
+    try:
+        db.execute("SELECT title FROM generations LIMIT 1")
+    except sqlite3.OperationalError:
+        db.execute("ALTER TABLE generations ADD COLUMN title TEXT NOT NULL DEFAULT ''")
 
     # Add user_id column
     tables_to_add_user = ["documents", "patterns", "generations", "batch_jobs"]

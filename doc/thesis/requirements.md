@@ -8,7 +8,9 @@
 4. Extract exam patterns (difficulty/type distribution + sample questions).
 5. Generate MCQ-focused quizzes with Bloom labels, answers, explanations.
 6. Evaluate generation quality and support quiz practice + review workflow.
-7. Persist generation history, usage metrics, and quiz attempts.
+7. Persist named generation history, usage metrics, and quiz attempts.
+8. Allow generated quiz titles to be set during review and edited later from history.
+9. Show per-quiz confidence trend based on submitted quiz attempt scores.
 
 ## Non-Functional Requirements
 
@@ -17,6 +19,7 @@
 - **Reproducibility**: save config snapshots and prompt version in `generations`.
 - **Maintainability**: modular services (`chunk_selector`, `question_generator`, `accuracy_evaluator`).
 - **Portability**: local run and Docker run supported.
+- **Usability**: guided wizard flow (`Source -> Pattern -> Generate -> Review`) for the primary task.
 
 ## Security Requirements
 

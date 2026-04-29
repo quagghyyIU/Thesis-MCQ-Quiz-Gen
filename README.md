@@ -38,8 +38,9 @@ Designed for my thesis to support lecturers in rapidly creating consistent, well
   - Score summary + review mode:
     - Highlight correct vs incorrect
     - Show correct answer + your answer
-    - Explanation + Bloom breakdown
-  - Quiz attempts are persisted in SQLite (for future dashboard/analytics)
+  - Explanation + Bloom breakdown
+  - Quiz attempts are persisted in SQLite for dashboard analytics
+  - Per-quiz confidence trend shows score progression for one selected generated quiz
 
 - **Grounding & hallucination detection**
   - Measures keyword overlap between each question and source chunks
@@ -49,7 +50,8 @@ Designed for my thesis to support lecturers in rapidly creating consistent, well
     - Weak (red)
 
 - **History, export, and usage tracking**
-  - Full history of generations (including provider + model + token usage)
+  - Full history of named generations (including provider + model + token usage)
+  - Rename generated quizzes during review or later from History
   - Export to `.txt`
   - Usage stats & API status dashboard with provider/model/call-type/status filters
   - Per-attempt fallback telemetry (success, quota, error, latency, attempt index)
@@ -99,7 +101,8 @@ Key AI/ML components:
 
 - **Frontend**
   - Next.js 16 + React 19 + shadcn/ui + Tailwind CSS 4
-  - Tabs: `Generate`, `Documents`, `Patterns`, `Batch`, `History`, `Usage`, `Evaluation` (admin only)
+  - Main workflow: `Source -> Pattern -> Generate -> Review`
+  - Supporting areas: `Batch`, `History`, `Dashboard`, `Usage`, `Evaluation` (admin only)
 
 ---
 
@@ -148,32 +151,36 @@ Set `GEMINI_API_KEY` (and optional `GROQ_API_KEY`, `JWT_SECRET`) in your environ
 
 ## 5. Basic Usage Flow
 
-1. **Upload learning materials** (`Documents` tab)
-   - Drag & drop lecture `PDF/DOCX/PPTX`
+1. **Source**
+   - Upload or choose lecture `PDF/DOCX/PPTX`
    - Wait for processing; document summary + chunk count will appear
 
-2. **Create exam pattern** (`Patterns` tab)
-   - Click **New Pattern**
-   - Choose source: paste text or upload file
-   - (Optional) enable custom instructions
-   - System extracts questions and builds pattern statistics
+2. **Pattern**
+   - Select an optional exam pattern
+   - Choose question count, language, and difficulty distribution
+   - Manual difficulty uses a normalized colored slider with a reset action
 
-3. **Generate questions** (`Generate` tab)
-   - Select source document + optional pattern
-   - Choose number of questions and language
-   - Run generation and review questions + explanations
+3. **Generate**
+   - Confirm the selected source/setup
+   - Run generation and move to review when complete
+
+4. **Review**
+   - Name the generated quiz, for example `Database Fundamentals - Demo Confidence Quiz`
+   - Inspect generated MCQs, answers, explanations, Bloom labels, and grounding evidence
    - Click **Start Quiz** to practice the generated MCQs
 
-4. **Practice & review (Quiz Practice Mode)**
+5. **Practice & review (Quiz Practice Mode)**
    - Do the quiz in `/quiz/[genId]`
    - Submit to see score + Bloom breakdown
    - Review mode shows per-question correctness + explanations
 
-5. **Evaluate accuracy & history/export**
+6. **Evaluate accuracy & history/export**
    - Click **Evaluate Accuracy** to see grounding scores per question
-   - `History` tab: open any past run and export to `.txt` (completed runs also expose **Start Quiz**)
+   - `History` tab: rename, open, evaluate, export, or start any completed generation
 
-6. **Monitor fallback behavior** (`Usage` tab)
+7. **Monitor progress and fallback behavior**
+   - `Dashboard`: summary, attempt history, Bloom breakdown, and per-quiz confidence trend
+   - `Usage`: provider/model/call type/status filters and token accounting
    - Filter by provider/model/call type/status
    - Inspect fallback events and model usage distribution
 
@@ -184,7 +191,7 @@ Set `GEMINI_API_KEY` (and optional `GROQ_API_KEY`, `JWT_SECRET`) in your environ
 This repo is organized by phases (see `doc/mcq_platform_roadmap.md`).
 
 - **Phase 2:** MCQ Practice Mode (done: Generate -> Start Quiz -> Submit -> Review)
-- **Phase 3:** Quiz dashboard & analytics foundation (summary + attempt history + Bloom breakdown)
+- **Phase 3:** Quiz dashboard & analytics foundation (summary + attempt history + Bloom breakdown + per-quiz confidence trend)
 
 ---
 
@@ -212,28 +219,42 @@ If you are my advisor or reviewer, the detailed demo script is in `SHOWCASE.md`.
    ```
 
 4. Check outputs:
-   - `eval/results/comparison.csv` (latest snapshot)
-   - `eval/results/runs.csv` (append-only run history)
+   - `eval/results/comparison.csv` (latest mean/std snapshot)
+   - `eval/results/runs.csv` (append-only mean/std run history)
+   - `eval/results/details.csv` (topic-level repeat details)
+   - `eval/results/failure_analysis.md` (thesis-ready failure table)
    - `eval/results/history.md` (human-readable run log)
 5. Each generation row now stores `config_snapshot` and `prompt_version` in SQLite for traceable reruns.
 
+### Latest core evaluation snapshot
+
+The thesis-ready snapshot uses 10 EN/VI topics and 3 repeats for each core baseline:
+
+| Variant | Grounding mean +- std | Bloom KL mean +- std | Judge mean +- std |
+|---|---:|---:|---:|
+| Baseline vanilla | 0.7912 +- 0.0048 | 18.0286 +- 1.6853 | 3.7833 +- 0.0946 |
+| RAG only | 0.9369 +- 0.0030 | 11.6357 +- 0.9601 | 4.0000 +- 0.0000 |
+| Full system | 0.9334 +- 0.0021 | 3.9054 +- 0.7817 | 4.0750 +- 0.1521 |
+
+Model-comparison baselines are configured but should not be claimed in the thesis unless rerun separately.
+
 ## 9. Current Thesis Maturity (Self-Assessment)
 
-### Current level: **Strong implementation / near thesis-demo ready**
+### Current level: **Feature-complete / thesis-demo ready after documentation and screenshot pass**
 
 The project is already beyond a basic prototype:
 - End-to-end product loop is complete (ingest → pattern extraction → generation → quiz practice → evaluation).
 - Reproducibility and evaluation pipeline are in place (`eval/config.yaml`, golden dataset, comparison baselines).
 - Production-safety mechanisms exist (global fallback, quota/error handling, per-user limits, structured errors).
 - Admin-facing evaluation dashboard and usage telemetry are implemented.
+- The WebApp includes a focused wizard workflow, named quizzes, history rename, and per-quiz confidence trend.
 
-### What is still needed for a strong final thesis defense
+### Final submission window
 
-To move from “good system build” to “high-scoring thesis contribution”, focus on:
-- **Experimental rigor**: report repeated runs, variance/confidence intervals, and statistical significance.
-- **Method comparison clarity**: clearly separate gains from RAG, pattern conditioning, and model choice.
-- **Ablation + failure analysis**: show where the approach fails (domain shift, noisy docs, long context).
-- **Security/reliability evidence**: brief load/rate-limit test results and failure-recovery traces.
-- **Thesis writing quality**: tighten related work positioning and explicitly state novelty/limitations.
+Submission is scheduled for **04/05/2026 to 08/05/2026 during office hours**. The project should be feature-frozen before this window. The final pass should focus on screenshots, report formatting, source packaging, and backup copies.
 
-If these items are completed cleanly, this is at a level that can support a solid bachelor thesis and potentially an excellent defense depending on report quality and experimental discipline.
+Final thesis support docs:
+- `SHOWCASE.md`
+- `doc/thesis/evaluation_results.md`
+- `doc/thesis/submission_checklist.md`
+- `doc/screenshots/README.md`

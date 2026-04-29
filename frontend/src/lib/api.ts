@@ -109,6 +109,7 @@ export interface QuestionItem {
 
 export interface GenerationItem {
   id: number;
+  title: string;
   document_id: number;
   pattern_id: number | null;
   questions: QuestionItem[];
@@ -162,6 +163,7 @@ export interface QuizAttemptItem {
 }
 
 export interface QuizAttemptDetail extends QuizAttemptItem {
+  generation_title?: string;
   time_taken_seconds: number;
   results: QuizResultItem[];
 }
@@ -189,10 +191,12 @@ export interface DashboardTrendItem {
   generation_id: number;
   date: string;
   score: number;
+  confidence_pct: number;
   correct_count: number;
   total_questions: number;
   time_taken_seconds: number;
   document_name: string;
+  generation_title: string;
 }
 
 export interface DashboardBloomStats {
@@ -378,6 +382,14 @@ export const api = {
     return request(`/generations/${id}`);
   },
 
+  updateGeneration(id: number, data: { title: string }): Promise<GenerationItem> {
+    return request(`/generations/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+  },
+
   evaluateGeneration(id: number): Promise<{
     overall_score: number;
     well_grounded_count: number;
@@ -449,6 +461,7 @@ export type EvalRow = {
   name: string;
   provider: string;
   model: string;
+  repeats?: string;
   recall_at_k: string;
   mrr: string;
   semantic_grounding: string;
@@ -456,6 +469,13 @@ export type EvalRow = {
   llm_judge: string;
   diversity: string;
   questions_returned: string;
+  recall_at_k_std?: string;
+  mrr_std?: string;
+  semantic_grounding_std?: string;
+  bloom_kl_std?: string;
+  llm_judge_std?: string;
+  diversity_std?: string;
+  questions_returned_std?: string;
   prompt_version: string;
 };
 

@@ -8,7 +8,7 @@ import sys
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
-from statistics import mean
+from statistics import mean, stdev
 
 import numpy as np
 import yaml
@@ -22,6 +22,7 @@ for path in (ROOT, BACKEND_PATH):
 from app.config import GEMINI_MODEL, GROQ_MODEL, OLLAMA_MODEL  # type: ignore[reportMissingImports]
 from app.prompts.v1 import VERSION as PROMPT_VERSION  # type: ignore[reportMissingImports]
 from app.services.embedder import embed_text, embed_texts  # type: ignore[reportMissingImports]
+from app.services import question_generator as qg  # type: ignore[reportMissingImports]
 from app.services.question_generator import _call_llm_with_fallback, generate_questions  # type: ignore[reportMissingImports]
 
 PROVIDER_MODEL_MAP = {
@@ -84,6 +85,7 @@ async def _generate(payload: dict) -> dict:
 
     async def _inner():
         async with LLM_LIMITER:
+            qg._cache.clear()
             return await generate_questions(
                 document_id=payload["document_id"],
                 chunks=payload["chunks"],
@@ -116,6 +118,7 @@ async def _generate(payload: dict) -> dict:
         "prompt_version": PROMPT_VERSION,
         "force_provider": force_provider,
         "force_model": force_model,
+        "repeat_idx": payload.get("repeat_idx", 0),
     }
     return await cached("generate", cache_key, _factory)
 
@@ -269,8 +272,9 @@ def _diversity_score(question_embeddings: list[list[float]]) -> float:
     return float(1 - mean(sims)) if sims else 0.0
 
 
-async def _run_baseline(dataset: dict, baseline: dict, defaults: dict, doc_chunk_cache: dict) -> dict:
+async def _run_baseline(dataset: dict, baseline: dict, defaults: dict, doc_chunk_cache: dict, repeat_idx: int = 0) -> tuple[dict, list[dict]]:
     topic_metrics = []
+    detail_rows = []
     exam = dataset["exams"][0] if dataset.get("exams") else None
     for doc in dataset["docs"]:
         raw_text = " ".join(doc["chunks"])
@@ -314,6 +318,7 @@ async def _run_baseline(dataset: dict, baseline: dict, defaults: dict, doc_chunk
                         "pattern": pattern,
                         "force_provider": baseline.get("force_provider"),
                         "force_model": baseline.get("force_model"),
+                        "repeat_idx": repeat_idx,
                     }
                 )
                 questions = gen["questions"]
@@ -351,6 +356,24 @@ async def _run_baseline(dataset: dict, baseline: dict, defaults: dict, doc_chunk
                     "model": actual_model,
                 }
             )
+            detail_rows.append(
+                {
+                    "repeat_idx": repeat_idx,
+                    "name": baseline["name"],
+                    "doc_id": doc["id"],
+                    "topic_id": topic["id"],
+                    "provider": actual_provider,
+                    "model": actual_model,
+                    "recall_at_k": recall,
+                    "mrr": mrr_score,
+                    "semantic_grounding": grounding,
+                    "bloom_kl": bloom_kl,
+                    "llm_judge": judge,
+                    "diversity": diversity,
+                    "questions_returned": float(len(questions)),
+                    "prompt_version": PROMPT_VERSION,
+                }
+            )
             print(
                 f"  [{baseline['name']}/{doc['id']}/{topic['id']}] "
                 f"provider={actual_provider} model={actual_model} q={len(questions)} judge={judge:.2f} grounding={grounding:.2f}"
@@ -363,7 +386,7 @@ async def _run_baseline(dataset: dict, baseline: dict, defaults: dict, doc_chunk
             "prompt_version": PROMPT_VERSION,
             "provider": "unknown",
             "model": "unknown",
-        }
+        }, detail_rows
 
     provider, model = _summarize_providers([(item["provider"], item["model"]) for item in topic_metrics])
     return {
@@ -378,7 +401,7 @@ async def _run_baseline(dataset: dict, baseline: dict, defaults: dict, doc_chunk
         "prompt_version": PROMPT_VERSION,
         "provider": provider,
         "model": model,
-    }
+    }, detail_rows
 
 
 async def run(config_path: str, name_filter: list[str] | None = None) -> list[dict]:
@@ -395,21 +418,58 @@ async def run(config_path: str, name_filter: list[str] | None = None) -> list[di
     run_id = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     doc_chunk_cache: dict = {}
+    repeats = int(defaults.get("repeats", 1))
     rows = []
+    detail_rows = []
     for baseline in baselines:
         print(f"== Running {baseline['name']} ==")
-        rows.append(await _run_baseline(dataset, baseline, defaults, doc_chunk_cache))
+        baseline_runs = []
+        for repeat_idx in range(repeats):
+            print(f"  repeat {repeat_idx + 1}/{repeats}")
+            summary, details = await _run_baseline(dataset, baseline, defaults, doc_chunk_cache, repeat_idx)
+            baseline_runs.append(summary)
+            detail_rows.extend(details)
+        rows.append(_aggregate_repeats(baseline_runs))
 
     for row in rows:
+        row["run_id"] = run_id
+    for row in detail_rows:
         row["run_id"] = run_id
 
     output_path = ROOT / config["output"]["comparison_csv"]
     output_path.parent.mkdir(parents=True, exist_ok=True)
     _write_csv(output_path, rows)
     _append_runs_csv(output_path.parent / "runs.csv", rows)
+    _write_details_csv(output_path.parent / "details.csv", detail_rows)
+    _write_failure_analysis(output_path.parent / "failure_analysis.md", run_id, detail_rows)
     _append_history(output_path.parent / "history.md", run_id, rows)
     _print_table(rows)
     return rows
+
+
+METRIC_FIELDS = ["recall_at_k", "mrr", "semantic_grounding", "bloom_kl", "llm_judge", "diversity", "questions_returned"]
+
+
+def _std(values: list[float]) -> float:
+    return stdev(values) if len(values) > 1 else 0.0
+
+
+def _aggregate_repeats(rows: list[dict]) -> dict:
+    if not rows:
+        return {}
+    out = {
+        "name": rows[0]["name"],
+        "provider": rows[0].get("provider", "unknown"),
+        "model": rows[0].get("model", "unknown"),
+        "prompt_version": rows[0].get("prompt_version", PROMPT_VERSION),
+        "repeats": len(rows),
+    }
+    for field in METRIC_FIELDS:
+        values = [float(row.get(field, 0.0)) for row in rows]
+        out[field] = mean(values)
+        out[f"{field}_mean"] = mean(values)
+        out[f"{field}_std"] = _std(values)
+    return out
 
 
 def _fmt_row(row: dict) -> dict:
@@ -418,6 +478,7 @@ def _fmt_row(row: dict) -> dict:
         "name": row["name"],
         "provider": row.get("provider", "unknown"),
         "model": row.get("model", "unknown"),
+        "repeats": row.get("repeats", 1),
         "recall_at_k": f"{row['recall_at_k']:.4f}",
         "mrr": f"{row['mrr']:.4f}",
         "semantic_grounding": f"{row['semantic_grounding']:.4f}",
@@ -425,12 +486,24 @@ def _fmt_row(row: dict) -> dict:
         "llm_judge": f"{row['llm_judge']:.4f}",
         "diversity": f"{row['diversity']:.4f}",
         "questions_returned": f"{row.get('questions_returned', 0.0):.2f}",
+        **{
+            f"{field}_{suffix}": f"{row.get(f'{field}_{suffix}', row.get(field, 0.0)):.4f}"
+            for field in METRIC_FIELDS
+            for suffix in ("mean", "std")
+        },
         "prompt_version": row["prompt_version"],
     }
 
 
 CSV_FIELDS = [
-    "run_id", "name", "provider", "model",
+    "run_id", "name", "provider", "model", "repeats",
+    "recall_at_k", "mrr", "semantic_grounding", "bloom_kl",
+    "llm_judge", "diversity", "questions_returned", "prompt_version",
+    *[f"{field}_{suffix}" for field in METRIC_FIELDS for suffix in ("mean", "std")],
+]
+
+DETAIL_FIELDS = [
+    "run_id", "repeat_idx", "name", "doc_id", "topic_id", "provider", "model",
     "recall_at_k", "mrr", "semantic_grounding", "bloom_kl",
     "llm_judge", "diversity", "questions_returned", "prompt_version",
 ]
@@ -445,17 +518,91 @@ def _write_csv(path: Path, rows: list[dict]) -> None:
 
 
 def _append_runs_csv(path: Path, rows: list[dict]) -> None:
-    new_file = not path.exists()
-    with path.open("a", encoding="utf-8", newline="") as file:
+    existing_rows: list[dict] = []
+    if path.exists():
+        with path.open(encoding="utf-8", newline="") as file:
+            reader = csv.DictReader(file)
+            if reader.fieldnames and reader.fieldnames != CSV_FIELDS:
+                existing_rows = list(reader)
+
+    mode = "w" if existing_rows else "a"
+    new_file = not path.exists() or bool(existing_rows)
+    with path.open(mode, encoding="utf-8", newline="") as file:
         writer = csv.DictWriter(file, fieldnames=CSV_FIELDS)
         if new_file:
             writer.writeheader()
+        for row in existing_rows:
+            writer.writerow({field: row.get(field, "") for field in CSV_FIELDS})
         for row in rows:
             writer.writerow(_fmt_row(row))
 
 
+def _write_details_csv(path: Path, rows: list[dict]) -> None:
+    with path.open("w", encoding="utf-8", newline="") as file:
+        writer = csv.DictWriter(file, fieldnames=DETAIL_FIELDS)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow({
+                **row,
+                **{
+                    key: f"{float(row[key]):.4f}"
+                    for key in ["recall_at_k", "mrr", "semantic_grounding", "bloom_kl", "llm_judge", "diversity", "questions_returned"]
+                },
+            })
+
+
+def _write_failure_analysis(path: Path, run_id: str, rows: list[dict]) -> None:
+    failures = []
+    for row in rows:
+        triggers = []
+        if row["semantic_grounding"] < 0.7:
+            triggers.append(("Low grounding", row["semantic_grounding"], "Generated content may not be strongly supported by retrieved chunks."))
+        if row["bloom_kl"] > 8:
+            triggers.append(("Bloom mismatch", row["bloom_kl"], "Output Bloom distribution drifted from the topic target."))
+        if row["llm_judge"] < 4:
+            triggers.append(("Low judge score", row["llm_judge"], "Quality judge found relevance, correctness, clarity, or grounding issues."))
+        if row["questions_returned"] < 6:
+            triggers.append(("Incomplete output", row["questions_returned"], "Model returned fewer questions than requested."))
+        for trigger, value, reason in triggers:
+            failures.append((row, trigger, value, reason))
+
+    lines = [
+        f"# Failure Analysis - {run_id}",
+        "",
+        "This table lists low-performing topic-level cases for thesis discussion. Common causes include weak retrieval grounding, Bloom distribution drift, and incomplete model output.",
+        "",
+        "| Baseline | Repeat | Document | Topic | Trigger | Value | Likely reason | Suggested mitigation |",
+        "| --- | ---: | --- | --- | --- | ---: | --- | --- |",
+    ]
+    for row, trigger, value, reason in failures[:80]:
+        mitigation = (
+            "Improve retrieval query/prompt constraints and keep lecturer review in the loop."
+            if trigger == "Low grounding"
+            else "Strengthen Bloom examples or adjust target pattern instructions."
+            if trigger == "Bloom mismatch"
+            else "Use stricter JSON/schema repair and retry policy."
+            if trigger == "Incomplete output"
+            else "Inspect generated item and refine prompt rubric."
+        )
+        lines.append(
+            "| " + " | ".join([
+                str(row["name"]),
+                str(int(row["repeat_idx"]) + 1),
+                str(row["doc_id"]),
+                str(row["topic_id"]),
+                trigger,
+                f"{float(value):.3f}",
+                reason,
+                mitigation,
+            ]) + " |"
+        )
+    if not failures:
+        lines.append("| All | - | - | - | No major failures | - | All tracked metrics passed thresholds. | Keep current setup. |")
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 def _append_history(path: Path, run_id: str, rows: list[dict]) -> None:
-    headers = ["baseline", "provider", "model", "recall@k", "mrr", "grounding", "bloom_kl", "judge", "diversity", "q_returned", "prompt"]
+    headers = ["baseline", "provider", "model", "repeats", "recall@k", "mrr", "grounding", "bloom_kl", "judge", "diversity", "q_returned", "prompt"]
     lines = [
         f"## Run {run_id}",
         "",
@@ -468,6 +615,7 @@ def _append_history(path: Path, run_id: str, rows: list[dict]) -> None:
                 row["name"],
                 row.get("provider", "unknown"),
                 row.get("model", "unknown"),
+                str(row.get("repeats", 1)),
                 f"{row['recall_at_k']:.3f}",
                 f"{row['mrr']:.3f}",
                 f"{row['semantic_grounding']:.3f}",

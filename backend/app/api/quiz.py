@@ -211,6 +211,7 @@ def get_attempt(attempt_id: int, current_user: dict = Depends(get_current_user))
 
     return {
         **attempt,
+        "generation_title": generation.get("title", ""),
         "time_taken_seconds": _time_taken_seconds(attempt["time_started"], attempt["time_finished"]),
         "results": results,
     }

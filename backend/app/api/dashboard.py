@@ -38,6 +38,7 @@ def dashboard_trend():
         rows = db.execute(
             """
             SELECT qa.*, g.document_id, d.filename AS document_name
+            , g.title AS generation_title
             FROM quiz_attempts qa
             LEFT JOIN generations g ON g.id = qa.generation_id
             LEFT JOIN documents d ON d.id = g.document_id
@@ -57,6 +58,8 @@ def dashboard_trend():
             "total_questions": attempt.get("total_questions", 0),
             "time_taken_seconds": _time_taken_seconds(attempt["time_started"], attempt["time_finished"]),
             "document_name": attempt.get("document_name") or "Unknown document",
+            "generation_title": attempt.get("generation_title") or "",
+            "confidence_pct": attempt["score"],
         })
     return trend
 
