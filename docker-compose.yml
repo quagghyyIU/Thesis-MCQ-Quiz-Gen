@@ -6,7 +6,7 @@ services:
     volumes:
       - quizgen-data:/app/data
     environment:
-      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET to a strong random value}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
       DATABASE_PATH: data/quizgen.db
