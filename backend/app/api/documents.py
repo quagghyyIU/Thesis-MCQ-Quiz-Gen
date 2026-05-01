@@ -1,5 +1,6 @@
 import json
 import os
+import uuid
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 
 from app.database import get_db, now_iso, row_to_dict
@@ -19,6 +20,14 @@ ALLOWED_TYPES = {
 }
 
 
+def _safe_upload_filename(filename: str, file_type: str) -> str:
+    stem = os.path.splitext(os.path.basename(filename))[0].strip()
+    safe_stem = "".join(ch if ch.isalnum() or ch in {"-", "_"} else "_" for ch in stem).strip("_")
+    if not safe_stem:
+        safe_stem = "upload"
+    return f"{uuid.uuid4().hex}_{safe_stem[:80]}.{file_type}"
+
+
 @router.post("/upload")
 async def upload_document(
     file: UploadFile = File(...),
@@ -32,12 +41,12 @@ async def upload_document(
     if size_mb > MAX_UPLOAD_SIZE_MB:
         raise HTTPException(400, f"File too large ({size_mb:.1f}MB). Max is {MAX_UPLOAD_SIZE_MB}MB.")
 
+    file_type = ALLOWED_TYPES[file.content_type]
     os.makedirs(UPLOAD_DIR, exist_ok=True)
-    file_path = os.path.join(UPLOAD_DIR, file.filename)
+    stored_filename = _safe_upload_filename(file.filename or "upload", file_type)
+    file_path = os.path.join(UPLOAD_DIR, stored_filename)
     with open(file_path, "wb") as f:
         f.write(contents)
-
-    file_type = ALLOWED_TYPES[file.content_type]
 
     try:
         raw_text, chunks, language = process_document(file_path, file_type)
@@ -59,7 +68,7 @@ async def upload_document(
     with get_db() as db:
         cursor = db.execute(
             "INSERT INTO documents (user_id, filename, file_type, raw_text, processed_chunks, language, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (uid, file.filename, file_type, raw_text, json.dumps(chunks), language, now_iso()),
+            (uid, stored_filename, file_type, raw_text, json.dumps(chunks), language, now_iso()),
         )
         doc_id = cursor.lastrowid
 

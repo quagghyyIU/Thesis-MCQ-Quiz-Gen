@@ -122,6 +122,9 @@ def init_db():
 
 def _seed_admin(db):
     """Create or upgrade a default admin/admin account for local demo usage."""
+    if os.getenv("SEED_DEMO_ADMIN", "").lower() not in {"1", "true", "yes"}:
+        return
+
     import bcrypt
 
     pw_hash = bcrypt.hashpw(b"admin", bcrypt.gensalt()).decode("utf-8")
