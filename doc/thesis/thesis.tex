@@ -1132,59 +1132,756 @@ system configuration.
 \section{Implementation and Results}
 
 \subsection{Development Environment}
-% TODO
+
+QuizGen is implemented as a two-tier web application composed of a Python
+backend and a Next.js frontend. Table~\ref{tab:tech-stack} lists the full
+technology stack used in this thesis implementation.
+
+\begin{table}[H]
+  \centering
+  \singlespacing
+  \caption{QuizGen technology stack.}
+  \label{tab:tech-stack}
+  \begin{tabular}{@{}lll@{}}
+    \toprule
+    \textbf{Layer} & \textbf{Technology} & \textbf{Notes} \\
+    \midrule
+    Backend language    & Python 3.10+             & \\
+    Backend framework   & FastAPI                  & RESTful API, JWT authentication \\
+    ASGI server         & Uvicorn                  & Hot-reload in development \\
+    Database            & SQLite                   & Single-file, zero-configuration \\
+    Frontend framework  & Next.js + React          & App Router, TypeScript \\
+    UI components       & shadcn/ui + Tailwind CSS & \\
+    Charts              & Recharts                 & Confidence trend, Bloom breakdown \\
+    LLM primary         & Groq API                 & \textit{llama-3.3-70b-versatile} \\
+    LLM fallbacks       & Groq API (multiple)      & Four alternative Groq models \\
+    LLM cloud fallback  & Gemini API               & \textit{gemini-2.5-flash} \\
+    LLM local fallback  & Ollama                   & \textit{gemma4:e4b-it-q4\_K\_M}, offline \\
+    Embeddings          & Gemini API               & \textit{gemini-embedding-001} \\
+    Local run           & \texttt{start-all.bat}   & Starts both services on Windows \\
+    Containerization    & Docker Compose           & Two-service stack with named volume \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The backend and frontend can be started locally on Windows using the
+provided \texttt{start-all.bat} script, which checks for Python and
+Node.js, installs dependencies if needed, and launches both services in
+separate terminal windows. The backend runs on port 8000 and the frontend
+on port 3000. For containerised deployment, a \texttt{docker-compose.yml}
+file is provided that builds both services from their respective
+Dockerfiles and mounts a named volume (\texttt{quizgen-data}) for SQLite
+database persistence. An interactive API reference is available at
+\texttt{http://localhost:8000/docs} via FastAPI's built-in Swagger UI.
 
 \subsection{Backend Implementation}
-% TODO
+
+The backend is organised into two layers: API routers that handle HTTP
+requests and services that encapsulate business logic.
+Table~\ref{tab:backend-modules} lists all modules and their
+responsibilities.
+
+\begin{table}[H]
+  \centering
+  \singlespacing
+  \caption{Backend API modules and services.}
+  \label{tab:backend-modules}
+  \begin{tabular}{@{}lll@{}}
+    \toprule
+    \textbf{Type} & \textbf{Module} & \textbf{Responsibility} \\
+    \midrule
+    Router & \texttt{auth}                  & Registration, login, JWT token issuance \\
+    Router & \texttt{documents}             & Upload, text extraction, chunk storage \\
+    Router & \texttt{patterns}              & Create, list, and delete exam patterns \\
+    Router & \texttt{generations}           & Trigger MCQ generation, retrieve results \\
+    Router & \texttt{batch}                 & Multi-topic batch generation \\
+    Router & \texttt{quiz}                  & Submit attempts, retrieve attempt records \\
+    Router & \texttt{dashboard}             & Confidence trend and Bloom breakdown data \\
+    Router & \texttt{usage}                 & API call logs and provider status \\
+    Router & \texttt{eval}                  & Run evaluation baselines, return metrics \\
+    \midrule
+    Service & \texttt{document\_processor}  & PDF/DOCX/PPTX extraction and chunking \\
+    Service & \texttt{embedder}             & Batch embedding via \textit{gemini-embedding-001} \\
+    Service & \texttt{chunk\_selector}      & Cosine-similarity retrieval of top-$k$ chunks \\
+    Service & \texttt{pattern\_analyzer}    & Parse and validate exam-pattern JSON \\
+    Service & \texttt{question\_generator}  & Prompt assembly and LLM call \\
+    Service & \texttt{question\_extractor}  & Parse and validate LLM JSON output \\
+    Service & \texttt{accuracy\_evaluator}  & Grounding score computation \\
+    Service & \texttt{llm\_router}          & Provider fallback chain and API call logging \\
+    Service & \texttt{batch\_processor}     & Orchestrate concurrent batch generation runs \\
+    Service & \texttt{rate\_limit}          & Per-user request rate limiting \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The \texttt{main.py} entry point registers all nine routers under the
+\texttt{/api} prefix, configures CORS to allow the frontend origin, and
+initialises the SQLite schema on startup via \texttt{init\_db()}. JWT
+authentication is enforced at the router level using FastAPI dependency
+injection; protected endpoints receive a verified user object rather than
+a raw token.
+
+The \texttt{llm\_router} service implements a configurable fallback chain
+read from the \texttt{LLM\_FALLBACK\_CHAIN} environment variable. The
+default chain begins with Groq serving \textit{llama-3.3-70b-versatile},
+then cascades through four additional Groq models, then Gemini
+\textit{gemini-2.5-flash}, and finally Ollama with a local
+\textit{gemma4:e4b-it-q4\_K\_M} model as an offline last resort. Every
+outbound LLM and embedding call is logged to the \texttt{api\_calls} table
+with provider name, model, latency, token count, and status, enabling
+per-provider usage diagnostics in the usage dashboard.
 
 \subsection{Frontend Implementation}
-% TODO
+
+The frontend is built with Next.js using the App Router and TypeScript.
+The main user-facing entry point is the \texttt{workflow-hub} component,
+which presents a guided four-step wizard: Source, Pattern, Generate, and
+Review. Each step is implemented as a dedicated component
+(\texttt{document-upload}, \texttt{pattern-manager},
+\texttt{question-generator}, and \texttt{generation-history}), and the
+wizard enforces step ordering so that generation cannot proceed without a
+source document.
+
+Figure~\ref{fig:source-step} shows the Source step, where the user uploads
+a lecture file or selects a previously processed document.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.92\linewidth]{01-workflow-source.png}
+  \caption{Source step: document upload and selection in the QuizGen wizard.}
+  \label{fig:source-step}
+\end{figure}
+
+The Pattern step, shown previously in Figure~\ref{fig:pattern-step},
+allows the user to attach an optional exam pattern and configure the
+difficulty distribution using a set of sliders. If no pattern is selected,
+the system generates questions using the retrieved source chunks alone,
+without style conditioning.
+
+Figure~\ref{fig:generate-step} shows the Generate confirmation step, where
+the user assigns a title to the quiz before submitting the generation
+request to the backend.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.92\linewidth]{03-workflow-generate-title.png}
+  \caption{Generate step: quiz title assignment before submitting the
+           generation request.}
+  \label{fig:generate-step}
+\end{figure}
+
+Figure~\ref{fig:review-step} shows the Review step, where generated
+questions are displayed with their answer options, correct answer,
+explanation, difficulty label, Bloom level, and grounding status. The
+lecturer can inspect each question and decide whether to retain it as part
+of the published quiz.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.92\linewidth]{04-workflow-review.png}
+  \caption{Review step: generated quiz with grounding status, Bloom labels,
+           and difficulty indicators.}
+  \label{fig:review-step}
+\end{figure}
+
+Navigation is protected by a JWT-aware \texttt{auth-provider} context,
+which stores the access token in client storage and attaches it as a
+Bearer header to all API requests. Unauthenticated users are redirected to
+the login page. Toast notifications surface API errors and quota warnings
+without blocking the interface.
 
 \subsection{Quiz Practice Implementation}
-% TODO
+
+Once a generation is saved, it appears in the generation history and can
+be launched as a timed quiz. The quiz practice page, located at
+\texttt{/quiz/[genId]}, loads the generation record, presents one question
+at a time, and runs an elapsed-time counter. The user selects an answer
+for each question and submits the attempt; the backend stores the
+submission in the \texttt{quiz\_attempts} table and returns the final score
+alongside per-question correctness.
+
+Figure~\ref{fig:quiz-practice} shows the quiz practice interface.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.92\linewidth]{05-quiz-practice.png}
+  \caption{Quiz practice interface showing a question with answer options
+           and the elapsed timer.}
+  \label{fig:quiz-practice}
+\end{figure}
+
+After submission, the user is redirected to the attempt review page at
+\texttt{/quiz/attempt/[attemptId]}, which shows each question alongside
+the user's selected answer, the correct answer, the explanation, and the
+Bloom level. This view allows the user to identify specific knowledge gaps
+immediately after each practice session.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.92\linewidth]{06-attempt-review.png}
+  \caption{Attempt review page showing per-question correctness, correct
+           answers, explanations, and Bloom levels.}
+  \label{fig:attempt-review}
+\end{figure}
 
 \subsection{Dashboard and Usage Implementation}
-% TODO
+
+The dashboard aggregates performance data across all quiz attempts for the
+authenticated user. Its primary visualisation is the confidence trend
+chart, implemented using Recharts in the
+\texttt{features/evaluation/history-chart} component. The chart groups
+attempts by named generation and plots the attempt score percentage over
+submission time, giving the user a longitudinal view of improvement or
+regression on each quiz.
+
+Figure~\ref{fig:history-rename} shows the generation history panel, which
+includes an inline rename feature so that quizzes can be given meaningful
+titles after generation.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.92\linewidth]{07-history-rename.png}
+  \caption{Generation history panel with inline quiz rename functionality.}
+  \label{fig:history-rename}
+\end{figure}
+
+Figure~\ref{fig:confidence-trend} shows the per-quiz confidence trend
+dashboard.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.92\linewidth]{08-dashboard-confidence-trend.png}
+  \caption{Per-quiz confidence trend chart showing attempt score percentage
+           over time for each named generation.}
+  \label{fig:confidence-trend}
+\end{figure}
+
+The usage dashboard, shown in Figure~\ref{fig:usage-dashboard}, is
+implemented in the \texttt{UsageStats} component and displays
+provider-level API call statistics, including call counts, total token
+consumption, mean latency, and the ratio of successful to failed calls.
+This view allows the user or administrator to monitor which LLM provider
+is handling the most requests and to identify rate-limiting events.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.92\linewidth]{10-usage-dashboard.png}
+  \caption{Usage dashboard showing per-provider API call statistics and
+           token consumption.}
+  \label{fig:usage-dashboard}
+\end{figure}
 
 \subsection{Evaluation Dashboard Implementation}
-% TODO
+
+The evaluation dashboard provides an in-application view of the system's
+quantitative performance. It is implemented across four components in the
+\texttt{features/evaluation} module: \texttt{evaluation-dashboard} (the
+page container), \texttt{latest-table} (a summary table of the most recent
+evaluation run), \texttt{history-chart} (a trend chart of metric values
+across evaluation runs), and \texttt{metric-explainer} (inline definitions
+of each metric for non-expert users). Evaluation data is served by the
+\texttt{/api/eval} router and loaded on demand rather than at startup, so
+the dashboard does not block the main application during evaluation runs.
+
+Figure~\ref{fig:eval-dashboard} shows the evaluation dashboard displaying
+the latest mean and standard deviation results for the three core baselines.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.92\linewidth]{09-evaluation-dashboard.png}
+  \caption{Evaluation dashboard showing the latest baseline comparison
+           results with mean and standard deviation values.}
+  \label{fig:eval-dashboard}
+\end{figure}
 
 \section{Discussion and Evaluation}
 
 \subsection{Evaluation Design}
-% TODO
+
+The evaluation measures how the three pipeline configurations compare on
+generation quality, retrieval accuracy, and Bloom-level alignment. The
+experiment uses a purpose-built golden dataset containing four documents
+and ten topics in two languages. Table~\ref{tab:eval-setup} summarises the
+evaluation configuration.
+
+\begin{table}[H]
+  \centering
+  \singlespacing
+  \caption{Evaluation setup.}
+  \label{tab:eval-setup}
+  \begin{tabular}{@{}ll@{}}
+    \toprule
+    \textbf{Parameter} & \textbf{Value} \\
+    \midrule
+    Documents           & 4 (IT Fundamentals, DB Fundamentals, OS Principles, Network Security) \\
+    Topics              & 10 (7 English, 3 Vietnamese) \\
+    Questions per topic & 6 \\
+    Repeats per baseline & 3 \\
+    Total question sets  & 90 (3 baselines $\times$ 10 topics $\times$ 3 repeats) \\
+    Generation model    & \textit{meta-llama/llama-4-scout-17b-16e-instruct} via Groq \\
+    Judge model         & \textit{gemini-2.5-flash} \\
+    Embedding model     & \textit{gemini-embedding-001} \\
+    Retrieval top-$k$   & 3 (RAG only and full system); 1 (vanilla) \\
+    Prompt version      & v1 \\
+    Random seed         & 42 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Three core baselines are compared. \textbf{Baseline vanilla} uses no
+retrieval and no pattern: the full raw document text is passed as context
+with top-$k$~=~1 to approximate a direct LLM call. \textbf{Baseline RAG
+only} applies top-$k$~=~3 semantic retrieval but no exam-pattern
+conditioning. \textbf{Full system} adds exam-pattern conditioning and
+Bloom-level distribution control on top of the RAG pipeline.
+
+The generation model is fixed to \textit{meta-llama/llama-4-scout-17b-16e-instruct}
+across all three baselines. This design choice isolates the effect of the
+pipeline configuration (retrieval and pattern conditioning) from the effect
+of the model itself, ensuring that differences in the results are
+attributable to the system components rather than to model variation. The
+application default model (\textit{llama-3.3-70b-versatile}) is used for
+production inference but was not used in the controlled evaluation.
 
 \subsection{Metrics}
-% TODO
+
+Table~\ref{tab:metrics} defines the seven metrics computed by the
+evaluation pipeline.
+
+\begin{table}[H]
+  \centering
+  \singlespacing
+  \caption{Evaluation metrics, definitions, and desired direction.}
+  \label{tab:metrics}
+  \begin{tabular}{@{}llp{5.5cm}l@{}}
+    \toprule
+    \textbf{Metric} & \textbf{Symbol} & \textbf{Definition} & \textbf{Better} \\
+    \midrule
+    Recall@$k$ & R@$k$ &
+      Fraction of ground-truth chunks present in the top-$k$ retrieved chunks &
+      Higher \\
+    MRR & MRR &
+      Mean reciprocal rank of the first ground-truth chunk in the ranked list &
+      Higher \\
+    Semantic grounding & SG &
+      Mean normalised cosine similarity between each question embedding and the
+      source chunk embeddings; range $[0, 1]$ &
+      Higher \\
+    Bloom KL divergence & KL &
+      KL divergence between the target Bloom distribution and the observed
+      Bloom label distribution of generated questions; lower means closer
+      alignment &
+      Lower \\
+    LLM judge score & J &
+      Mean of four criteria (relevance, correctness, clarity, groundedness)
+      scored 1--5 by a \textit{gemini-2.5-flash} judge &
+      Higher \\
+    Diversity & D &
+      1 minus the mean pairwise normalised cosine similarity among question
+      embeddings; measures lexical and semantic variety &
+      Higher \\
+    Questions returned & Q &
+      Count of valid questions returned per topic; expected value is 6 &
+      $= 6$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Recall@$k$ and MRR are retrieval-side metrics and are computed from
+annotated ground-truth chunk indices in the golden dataset. Semantic
+grounding, Bloom KL divergence, LLM judge score, and diversity are
+generation-side metrics that measure the quality and alignment of the
+produced question sets. Questions returned measures output completeness.
 
 \subsection{Quantitative Results}
-% TODO
+
+Table~\ref{tab:results} reports the mean and standard deviation of each
+metric across three repeated runs for the three core baselines.
+
+\clearpage
+
+\begin{table}[H]
+  \centering
+  \singlespacing
+  \caption{Core baseline comparison (mean $\pm$ std, 3 repeats, 10 topics).}
+  \label{tab:results}
+  \begin{tabular}{@{}lrrrrr@{}}
+    \toprule
+    \textbf{Baseline} &
+    \textbf{SG} $\uparrow$ &
+    \textbf{KL} $\downarrow$ &
+    \textbf{Judge} $\uparrow$ &
+    \textbf{Diversity} $\uparrow$ &
+    \textbf{Q ret.} \\
+    \midrule
+    Baseline vanilla
+      & $0.7912 \pm 0.0048$
+      & $18.029 \pm 1.685$
+      & $3.783 \pm 0.095$
+      & $0.2152 \pm 0.0033$
+      & $6.0 \pm 0.0$ \\
+    RAG only
+      & $0.9369 \pm 0.0030$
+      & $11.636 \pm 0.960$
+      & $4.000 \pm 0.000$
+      & $0.1711 \pm 0.0031$
+      & $6.0 \pm 0.0$ \\
+    Full system
+      & $0.9334 \pm 0.0021$
+      & $3.905 \pm 0.782$
+      & $4.075 \pm 0.152$
+      & $0.1731 \pm 0.0032$
+      & $6.0 \pm 0.0$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Recall@$k$ and MRR were 1.0000 $\pm$ 0.0000 for all three baselines,
+confirming that the cosine-similarity retrieval correctly identifies the
+annotated ground-truth chunk at rank 1 for every topic in this dataset.
+These metrics therefore do not differentiate the baselines; the meaningful
+variation lies in the generation-side metrics.
+
+\textbf{Semantic grounding.} Adding RAG raises semantic grounding from
+0.7912 to 0.9369, a gain of 0.146 points. This confirms that constraining
+generation to retrieved source chunks substantially increases the overlap
+between generated question content and the lecture material. The full
+system achieves 0.9334, marginally lower than RAG only, which suggests
+that pattern conditioning introduces slight lexical variation that can
+reduce cosine similarity with the raw source text, without meaningfully
+harming overall grounding quality.
+
+\textbf{Bloom KL divergence.} The full system reduces Bloom KL from
+18.029 (vanilla) to 3.905, a reduction of 78.3\%. RAG only brings it
+to 11.636, but the largest gain comes from adding the exam-pattern
+conditioning that explicitly encodes the target Bloom distribution in
+the generation prompt. This result is the primary evidence that pattern
+conditioning is effective for cognitive-level alignment.
+
+\textbf{LLM judge score.} The full system achieves the highest judge score
+(4.075), marginally above RAG only (4.000) and notably above vanilla
+(3.783). The improvement from vanilla to RAG only is consistent with the
+observation that grounded questions are judged as more relevant and
+correct. The small additional gain from RAG only to the full system
+suggests that pattern conditioning improves clarity and structural
+quality.
+
+\textbf{Diversity.} Diversity is lowest for RAG-based methods (0.1711 and
+0.1731) compared to vanilla (0.2152). This is an expected trade-off:
+constraining generation to a small set of retrieved chunks reduces the
+thematic range of generated questions. For grounded exam generation, this
+trade-off is acceptable because topic focus is more important than
+maximising lexical variety.
 
 \subsection{Failure Analysis}
-% TODO
+
+The failure analysis identifies topic-level cases where a baseline exceeds
+the Bloom KL threshold of 8 or falls below the LLM judge threshold of 4.
+Table~\ref{tab:failures} presents five representative cases selected to
+illustrate the pattern of failures across baselines.
+
+\begin{table}[H]
+  \centering
+  \singlespacing
+  \caption{Representative failure cases from the evaluation.}
+  \label{tab:failures}
+  \begin{tabular}{@{}llllr@{}}
+    \toprule
+    \textbf{Baseline} & \textbf{Document} & \textbf{Topic} &
+    \textbf{Trigger} & \textbf{Value} \\
+    \midrule
+    Baseline vanilla & os\_basics         & cpu\_scheduling   & Bloom mismatch   & 27.020 \\
+    Baseline vanilla & it\_intro          & cloud\_models     & Bloom mismatch   & 26.958 \\
+    Baseline vanilla & db\_fundamentals   & acid\_transactions & Low judge score  & 3.500  \\
+    RAG only         & os\_basics         & cpu\_scheduling   & Bloom mismatch   & 27.020 \\
+    Full system      & db\_fundamentals   & acid\_transactions & Bloom mismatch   & 13.469 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Several patterns emerge from the full failure analysis. First, Bloom
+distribution mismatch is the dominant failure mode and is concentrated in
+the vanilla baseline, which triggers it on nearly every topic that
+requires higher-order cognitive levels (apply, analyze). The LLM defaults
+to lower-order recall and understanding questions when no explicit
+distribution constraint is applied. Second, RAG only reduces the count of
+low judge scores to zero but does not fully correct Bloom drift, because
+retrieval improves source grounding but provides no signal about the
+desired cognitive distribution. Third, the full system reduces the total
+number of failure-triggering topic-level cases from 49 (vanilla) to nine,
+but does not eliminate them entirely. Two topics are persistently
+difficult: \textit{acid\_transactions} (Bloom KL remains above 13 in all
+three full-system repeats) and \textit{cpu\_scheduling} (Bloom KL between
+8 and 9 across repeats). Both topics require the \textit{apply} or
+\textit{analyze} level, which the model has difficulty honouring
+consistently even when prompted. These cases indicate that prompt-based
+Bloom conditioning is effective in aggregate but imperfect at the
+individual topic level, and that a post-generation re-ranking or
+filtering step may be needed for high-stakes use.
 
 \subsection{Comparison with Related Work}
-% TODO
+
+Table~\ref{tab:related-comparison} places QuizGen against the systems
+reviewed in Chapter~II using an evidence-based comparison. Rather than
+repeating the feature checklist of Table~\ref{tab:system-comparison}, the
+table records whether each system provides a published quantitative metric
+or empirical evidence for each capability.
+
+\begin{table}[H]
+  \centering
+  \singlespacing
+  \caption{Evidence-based comparison of QuizGen with related systems.}
+  \label{tab:related-comparison}
+  \begin{tabular}{@{}p{3.2cm}p{2.2cm}p{2.2cm}p{2.2cm}p{2.2cm}@{}}
+    \toprule
+    \textbf{System} &
+    \textbf{Grounding metric reported} &
+    \textbf{Bloom alignment evaluated} &
+    \textbf{Quiz practice workflow} &
+    \textbf{Performance analytics} \\
+    \midrule
+    Generic ChatGPT         & No & No & No & No \\
+    E-QGen \cite{eqgen2024} & No & No & No & No \\
+    BUE AQG \cite{bueaqg2024} & User study (80\% satisfaction) & No & No & No \\
+    COLING 2025 \cite{coling2025mcq} & BLEU/ROUGE only & No & No & No \\
+    \textbf{QuizGen (this thesis)} &
+      \textbf{Semantic grounding score (0.93)} &
+      \textbf{Bloom KL divergence (3.91)} &
+      \textbf{Yes (attempt tracking)} &
+      \textbf{Yes (confidence trend)} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Compared with generic LLM prompting, QuizGen adds source retrieval and a
+grounding evaluation mechanism that surfaces weak questions to the
+lecturer before publication. Compared with RAG-only generation, QuizGen
+adds exam-pattern conditioning and Bloom-level control, reducing KL
+divergence from 11.636 to 3.905. Compared with static question generation
+tools such as E-QGen and BUE AQG, QuizGen integrates the generated
+questions into a quiz practice workflow with attempt tracking and a
+per-quiz confidence trend, extending its utility beyond the generation
+step itself.
 
 \subsection{Threats to Validity}
-% TODO
+
+Several limitations affect the interpretation of the evaluation results.
+
+\textbf{Dataset scale.} The evaluation covers ten topics across four
+documents in two languages. This scale is sufficient for a thesis-level
+proof of concept but is not large enough to make broad claims about
+generalisability across all subject domains or languages.
+
+\textbf{LLM judge bias.} The judge model (\textit{gemini-2.5-flash})
+assigns scores based on its own training distribution. It may be
+systematically lenient or strict across topics and may correlate with the
+generation model through shared training data. The strict rubric and the
+instruction to use the full scoring range mitigate but do not eliminate
+this bias.
+
+\textbf{Grounding score as a proxy.} Semantic grounding measures cosine
+overlap between question embeddings and source chunk embeddings. A high
+score indicates topical alignment but does not guarantee factual
+correctness. A well-grounded question could still contain an incorrect
+answer option that is semantically close to the source text.
+
+\textbf{Retrieval ceiling effect.} Recall@$k$ and MRR were 1.0 for all
+baselines because the golden dataset is small and each topic has a
+precisely annotated ground-truth chunk that the retriever always ranks
+first. On a larger or noisier document collection, retrieval metrics would
+likely show meaningful differences between baselines.
+
+\textbf{Single-model evaluation.} All three core baselines use the same
+generation model. Results may differ with other models; multi-model
+comparison baselines are configured in \texttt{eval/config.yaml} but their
+results were not collected for this thesis and are left as future work.
+
+\textbf{Local deployment only.} The system has not been tested under
+concurrent load or with a production database. Latency and throughput
+characteristics may differ significantly in a classroom deployment.
 
 \subsection{Summary of Findings}
-% TODO
+
+The evaluation provides three main findings. First, adding RAG to vanilla
+LLM generation substantially improves semantic grounding (from 0.7912 to
+0.9369) and LLM judge quality (from 3.783 to 4.000), supporting the core
+premise that source retrieval is necessary for lecture-grounded MCQ
+generation. Second, adding exam-pattern conditioning to the RAG pipeline
+reduces Bloom KL divergence by 66.5\% (from 11.636 to 3.905), confirming
+that few-shot pattern injection is an effective mechanism for cognitive-
+level alignment without model fine-tuning. Third, the full system achieves
+the best LLM judge score (4.075) while maintaining high semantic grounding
+(0.9334), demonstrating that the three components — retrieval, pattern
+conditioning, and Bloom control — complement rather than conflict with each
+other. The primary limitation is that Bloom distribution control is not
+perfectly consistent at the individual topic level, particularly for topics
+that require higher-order cognitive levels, and lecturer review before
+formal exam use remains necessary.
 
 \section{Conclusion and Future Work}
 
 \subsection{Conclusion}
-% TODO
+
+This thesis presented QuizGen, a pattern-aware retrieval-augmented
+generation platform for generating grounded multiple-choice questions from
+lecture materials. The system was designed to address four concrete
+problems identified in existing approaches: the absence of source
+grounding in LLM-generated questions, the lack of exam-pattern
+conditioning, the inability to control Bloom's taxonomy distribution, and
+the absence of an integrated quiz practice workflow.
+
+QuizGen implements a nine-stage pipeline that transforms raw lecture
+documents in PDF, DOCX, and PPTX formats into playable, grounded
+multiple-choice quizzes with per-quiz performance analytics. The system
+combines semantic retrieval using \textit{gemini-embedding-001}, exam-pattern
+conditioning via few-shot prompt injection, explicit Bloom-level and
+difficulty control, and a grounding evaluation mechanism that classifies
+each generated question as well-grounded, partially grounded, or poorly
+grounded. The full application supports lecturer workflows for upload,
+generation, and review, as well as student workflows for quiz practice,
+attempt review, and dashboard-based progress tracking.
+
+Evaluation on ten topics in English and Vietnamese, with three repeated
+runs per baseline, demonstrates that the system meets its stated
+objectives. Adding retrieval-augmented generation to vanilla LLM
+prompting improves semantic grounding from 0.7912 to 0.9369. Adding
+exam-pattern conditioning further reduces Bloom KL divergence by 66.5\%
+compared to RAG only, from 11.636 to 3.905. The full system achieves the
+highest LLM judge quality score (4.075) among the three baselines while
+returning all requested questions in every run. These results confirm
+that the three components of the pipeline — retrieval, pattern
+conditioning, and Bloom control — are each independently effective and
+that they complement each other in the combined system.
+
+Nonetheless, the evaluation was conducted at thesis scale on a
+purpose-built dataset. Lecturer review before formal exam use remains
+necessary, and several directions for extending and strengthening the
+system are identified in Section~\ref{subsec:future}.
 
 \subsection{Contributions}
-% TODO
+
+This thesis makes the following contributions.
+
+\begin{enumerate}
+
+  \item \textbf{Pattern-aware RAG pipeline for MCQ generation.}
+        A generation pipeline that combines semantic chunk retrieval,
+        few-shot exam-pattern conditioning, and Bloom-level distribution
+        control in a single prompt. The pipeline operates without model
+        fine-tuning and is compatible with any API-based LLM provider.
+
+  \item \textbf{Grounding evaluation mechanism.}
+        A semantic grounding score that classifies each generated question
+        as well-grounded, partially grounded, or poorly grounded by
+        measuring normalised cosine similarity between the question
+        embedding and the source chunk embeddings. The score is exposed
+        in the review interface as a lecturer-facing quality signal.
+
+  \item \textbf{Integrated quiz practice and confidence trend analytics.}
+        A web-based quiz practice workflow that stores per-attempt scores,
+        timings, and Bloom-level correctness, and visualises per-quiz
+        confidence trend over time. This extends the utility of generated
+        questions beyond the one-shot generation step.
+
+  \item \textbf{Batch generation support.}
+        A background batch-processing module that accepts multiple document
+        identifiers in a single request and generates quizzes for each
+        document sequentially without requiring the user to repeat the
+        wizard workflow. Progress is tracked per document and polled via
+        a dedicated API endpoint.
+
+  \item \textbf{Reproducible evaluation pipeline.}
+        A configurable evaluation runner with a seeded golden dataset,
+        fixed-model baselines, three-repeat aggregation, mean and standard
+        deviation reporting, and automated failure analysis. The pipeline
+        is re-runnable from a single command and produces structured CSV
+        and Markdown outputs for transparency.
+
+  \item \textbf{Multi-provider LLM fallback architecture.}
+        A provider-agnostic routing layer that cascades through Groq
+        (multiple models), Gemini, and a local Ollama instance, logging
+        every call with latency and token counts for usage diagnostics.
+        The architecture allows the system to remain operational under
+        provider-level rate limiting.
+
+\end{enumerate}
 
 \subsection{Limitations}
-% TODO
+
+The following limitations apply to the current implementation and
+evaluation.
+
+\begin{itemize}
+
+  \item \textbf{MCQ-only generation.} QuizGen generates multiple-choice
+        questions exclusively. Open-ended, short-answer, and essay
+        questions are not supported.
+
+  \item \textbf{Thesis-scale dataset.} The evaluation covers ten topics
+        across four documents. The results may not generalise to all
+        subject domains, languages, or document types.
+
+  \item \textbf{No classroom deployment.} The system has been tested only
+        in a local single-user configuration. Concurrent-user behaviour,
+        throughput under load, and long-term data integrity have not been
+        assessed.
+
+  \item \textbf{Grounding score is a proxy.} The semantic grounding score
+        measures topical overlap and does not verify factual correctness.
+        A well-grounded question can still contain an incorrect answer
+        option if the source text itself is ambiguous or the LLM
+        misinterprets it.
+
+  \item \textbf{No human expert evaluation.} Question quality was assessed
+        by an LLM judge rather than by domain-expert lecturers. Human
+        evaluation of relevance, pedagogical value, and distractor quality
+        remains as future work.
+
+\end{itemize}
 
 \subsection{Future Work}
-% TODO
+\label{subsec:future}
+
+Several directions could extend and strengthen QuizGen beyond the current
+implementation.
+
+\textbf{Multi-document generation.} The current pipeline retrieves chunks
+from a single source document per generation request. A multi-document
+retrieval mode would allow lecturers to synthesise questions that span
+multiple lecture files or an entire course module in one step.
+
+\textbf{Quiz export to PDF.} Allowing lecturers to export a generated quiz
+as a formatted PDF would support offline distribution and printed
+examination use without requiring students to use the web application.
+
+\textbf{Spaced repetition for weak questions.} The attempt history already
+stores per-question correctness. A spaced-repetition scheduler could
+surface questions that the user has answered incorrectly more than once,
+prioritising practice on known weak areas.
+
+\textbf{Larger and more diverse evaluation dataset.} Expanding the golden
+dataset to cover more subject domains, more document types, and additional
+languages would provide a stronger empirical basis for the evaluation
+claims and reduce the current ceiling effect on retrieval metrics.
+
+\textbf{Human lecturer evaluation.} A user study with domain-expert
+lecturers rating question relevance, pedagogical value, and distractor
+quality would complement the automated LLM judge and provide
+externally-validated evidence of system quality.
+
+\textbf{Formal evaluation of the local LLM fallback.} Ollama with
+\textit{gemma4:e4b-it-q4\_K\_M} is implemented and active in the provider
+fallback chain but was not included in the controlled evaluation. Running
+the evaluation pipeline against the local model would characterise the
+quality trade-off between offline privacy-preserving generation and
+cloud-backed generation, which is relevant for deployment in
+bandwidth-constrained or privacy-sensitive educational environments.
+
+\textbf{Production database and scalable infrastructure.} Migrating from
+SQLite to a production-grade database, adding an asynchronous task queue
+for generation jobs, and deploying behind a load balancer would allow
+QuizGen to serve a classroom-scale user population and enable proper
+concurrency and reliability testing.
 
 % ════════════════════════════════════════════════════════════════════════════
 %  REFERENCES
