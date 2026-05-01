@@ -1,0 +1,1332 @@
+\documentclass[12pt,a4paper]{article}
+
+% ════════════════════════════════════════════════════════════════════════════
+%  PACKAGES
+% ════════════════════════════════════════════════════════════════════════════
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{mathptmx}
+\usepackage{microtype}
+
+\usepackage{geometry}
+\geometry{
+  left   = 1.5in,
+  right  = 1.0in,
+  top    = 1.5in,
+  bottom = 1.5in,
+  includefoot
+}
+
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{verbatim}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{enumitem}
+\usepackage{setspace}
+\usepackage{tocloft}
+\usepackage{abstract}
+% datetime removed — use \today instead
+\usepackage{caption}
+\usepackage{float}
+\usepackage{titlesec}
+
+% ════════════════════════════════════════════════════════════════════════════
+%  FORMAT SETTINGS
+% ════════════════════════════════════════════════════════════════════════════
+
+\doublespacing
+\setlength{\parindent}{0.5in}
+\setlength{\parskip}{0pt}
+\raggedbottom
+\emergencystretch=2em
+
+\setlist[itemize]{
+  leftmargin=0.65in,
+  itemsep=2pt,
+  topsep=4pt,
+  parsep=0pt
+}
+
+\setlist[enumerate]{
+  leftmargin=0.65in,
+  itemsep=2pt,
+  topsep=4pt,
+  parsep=0pt
+}
+
+\captionsetup{
+  font=normalsize,
+  labelfont=bf,
+  justification=centering
+}
+
+\hypersetup{
+  colorlinks=false,
+  pdfborder={0 0 0}
+}
+
+% ── Section = Chapter heading (display style, centred, all-caps title) ─────────
+\titleformat{\section}[display]
+  {\centering\bfseries\singlespacing\large}
+  {CHAPTER \Roman{section}}
+  {0.8cm}
+  {\MakeUppercase}
+
+\titlespacing{\section}{0pt}{0.5cm}{1.2cm}
+
+% ── Subsection ─────────────────────────────────────────────────────────────────
+\titleformat{\subsection}
+  {\normalfont\bfseries}
+  {\thesubsection}
+  {0.8em}
+  {}
+
+% ── Subsubsection ──────────────────────────────────────────────────────────────
+\titleformat{\subsubsection}
+  {\normalfont\bfseries}
+  {\thesubsubsection}
+  {0.8em}
+  {}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\begin{document}
+
+% ════════════════════════════════════════════════════════════════════════════
+%  TITLE PAGE
+% ════════════════════════════════════════════════════════════════════════════
+
+\begin{titlepage}
+  \centering
+  \singlespacing
+  \thispagestyle{empty}
+
+  \vspace*{0.8cm}
+
+  {\large\bfseries VIETNAM NATIONAL UNIVERSITY -- HO CHI MINH CITY\par}
+  \vspace{0.25cm}
+  {\large\bfseries INTERNATIONAL UNIVERSITY\par}
+  \vspace{0.2cm}
+  {\normalsize\bfseries School of Computer Science and Engineering\par}
+
+  \vspace{1.0cm}
+
+  \includegraphics[width=0.22\linewidth]{Screenshot 2025-12-03 205743.png}
+
+  \vspace{1.0cm}
+
+  {\Large\bfseries
+    PATTERN-AWARE RETRIEVAL-AUGMENTED GENERATION OF\\[6pt]
+    MULTIPLE-CHOICE QUESTIONS FROM LECTURE MATERIALS\\[6pt]
+    USING LARGE LANGUAGE MODELS\par}
+
+  \vspace{0.7cm}
+
+  {\normalsize\itshape
+    QuizGen: A Pattern-Aware RAG-Based MCQ Generation and Practice Platform\par}
+
+  \vspace{1.4cm}
+
+  {\normalsize By\par}
+  \vspace{0.3cm}
+  {\normalsize\bfseries Luong Quang Huy\par}
+  \vspace{0.2cm}
+  {\normalsize Student ID: ITITIU22076\par}
+
+  \vspace{1.4cm}
+
+  {\normalsize
+    A thesis submitted to the School of Computer Science and Engineering\\
+    in partial fulfillment of the requirements for the degree of\\
+    Bachelor of Science in Computer Science\par}
+
+  \vfill
+
+  {\normalsize Ho Chi Minh City, Vietnam\par}
+  \vspace{0.2cm}
+  {\normalsize \the\year\par}
+\end{titlepage}
+
+% ════════════════════════════════════════════════════════════════════════════
+%  FRONT MATTER
+% ════════════════════════════════════════════════════════════════════════════
+
+\pagenumbering{roman}
+\setcounter{page}{2}
+
+% ────────────────────────────────────────────────────────────────────────────
+%  SIGNATURE PAGE
+% ────────────────────────────────────────────────────────────────────────────
+
+\newpage
+\thispagestyle{empty}
+\begin{center}
+  \singlespacing
+
+  {\bfseries
+    PATTERN-AWARE RETRIEVAL-AUGMENTED GENERATION OF\\[6pt]
+    MULTIPLE-CHOICE QUESTIONS FROM LECTURE MATERIALS\\[6pt]
+    USING LARGE LANGUAGE MODELS\par}
+
+  \vspace{2.2cm}
+
+  APPROVED BY:
+
+  \vspace{1.5cm}
+
+  \makebox[4.2in]{\hrulefill}\\{}
+  {[}Supervisor Name, Title{]}, Chair
+
+  \vspace{1.3cm}
+
+  \makebox[4.2in]{\hrulefill}\\{}
+  {[}Committee Member Name, Title{]}
+
+  \vspace{1.3cm}
+
+  \makebox[4.2in]{\hrulefill}\\{}
+  {[}Committee Member Name, Title{]}
+
+  \vspace{1.8cm}
+
+  THESIS COMMITTEE
+\end{center}
+
+% ────────────────────────────────────────────────────────────────────────────
+%  ACKNOWLEDGMENTS
+% ────────────────────────────────────────────────────────────────────────────
+
+\newpage
+\thispagestyle{empty}
+\begin{center}
+  \textbf{ACKNOWLEDGMENTS}
+\end{center}
+
+\vspace{1cm}
+
+First and foremost, I would like to express my sincere gratitude to my
+supervisor, \textbf{[Supervisor Name, Title]}, for the continuous guidance,
+constructive feedback, and encouragement throughout this thesis project.
+Your expertise in artificial intelligence and software engineering greatly
+shaped the direction of this work, and your patience during every revision
+cycle made this thesis possible.
+
+I am grateful to the faculty of the \textbf{School of Computer Science and
+Engineering} at \textbf{International University -- Vietnam National
+University Ho Chi Minh City} for providing an academic environment that
+encouraged independent research and critical thinking. The knowledge and
+skills I gained throughout my undergraduate years formed the foundation
+upon which this project was built.
+
+I would also like to thank my fellow students and friends for the
+discussions, late-night study sessions, and mutual support. Special thanks
+to \textbf{[Friend / Classmate Names]}, whose feedback during the early
+prototype stages helped identify issues I would not have noticed alone.
+
+I am deeply thankful to my family for their unwavering love and
+encouragement throughout my studies. Their sacrifices and constant belief
+in me gave me the strength to persevere through the most challenging phases
+of this project.
+
+Finally, I acknowledge the open-source community and the developers behind
+the tools and frameworks used in this thesis, including \textbf{FastAPI},
+\textbf{Next.js}, \textbf{LangChain}, and the \textbf{Groq} and
+\textbf{Google Gemini} API platforms, without which building QuizGen at
+this scale would not have been feasible.
+
+\vspace{1cm}
+\begin{flushright}
+  \singlespacing
+  \textit{Luong Quang Huy}\\
+  Ho Chi Minh City, \today
+\end{flushright}
+
+% ────────────────────────────────────────────────────────────────────────────
+%  TABLE OF CONTENTS / LIST OF TABLES / LIST OF FIGURES
+% ────────────────────────────────────────────────────────────────────────────
+
+\newpage
+\setcounter{page}{4}
+\tableofcontents
+
+\newpage
+\listoftables
+
+\newpage
+\listoffigures
+
+% ────────────────────────────────────────────────────────────────────────────
+%  ABSTRACT
+% ────────────────────────────────────────────────────────────────────────────
+
+\newpage
+\begin{center}
+  \textbf{ABSTRACT}
+\end{center}
+
+\vspace{1cm}
+
+The rapid advancement of large language models (LLMs) has created new
+opportunities for automating educational content creation. However,
+generating high-quality multiple-choice questions (MCQs) for academic use
+remains a non-trivial challenge: manual question creation is
+time-consuming, generic LLM generation is prone to hallucination, and
+off-the-shelf outputs rarely conform to an institution's specific exam
+style, difficulty distribution, or cognitive-level requirements.
+
+In this thesis, I propose \textbf{QuizGen}, a pattern-aware
+retrieval-augmented generation (RAG) platform for generating grounded
+multiple-choice questions from lecture materials. QuizGen addresses the
+limitations of generic generation by combining lecture-material retrieval,
+exam-pattern conditioning, and Bloom's taxonomy control within a unified
+web-based workflow.
+
+The system operates through a multi-stage pipeline. Uploaded lecture
+documents in PDF, DOCX, and PPTX formats are extracted and split into
+overlapping chunks with a chunk size of 2{,}000 and an overlap of 200.
+These chunks are embedded using
+\textit{gemini\mbox{-}embedding\mbox{-}001} and stored for semantic
+retrieval. When a lecturer requests a quiz, the most relevant chunks are
+retrieved through cosine similarity and injected into a structured prompt
+together with an optional exam-pattern template extracted from past exams.
+The prompt also encodes a target Bloom's taxonomy level and difficulty
+distribution so that the LLM produces questions with answer options, the
+correct answer, an explanation, a Bloom level label, and a difficulty
+rating. Each generated question is then scored by an automated grounding
+evaluator that measures semantic overlap with the source chunks, flagging
+questions as \textit{grounded}, \textit{partially grounded}, or
+\textit{weak}. Finally, the questions are published as a playable quiz;
+student attempts, scores, timings, and Bloom-level accuracy are stored and
+visualized in a per-quiz confidence-trend dashboard.
+
+Evaluation on ten topics in both English and Vietnamese, with three
+repeated runs and six questions per topic, shows that adding RAG improves
+semantic grounding over vanilla LLM generation. Incorporating exam-pattern
+conditioning further improves Bloom-level distribution alignment. The full
+system also achieves the highest LLM judge quality score among the tested
+baselines while maintaining complete question-set generation in every run.
+
+Nonetheless, several limitations remain. The evaluation dataset is
+thesis-scale and may not generalize to all domains or languages. The
+grounding score is a semantic proxy and does not guarantee factual
+correctness. Lecturer review before formal exam use is therefore still
+recommended.
+
+\bigskip
+\noindent\textbf{Keywords:} multiple-choice question generation,
+retrieval-augmented generation, large language models, Bloom's taxonomy,
+exam-pattern conditioning, educational technology.
+
+% ════════════════════════════════════════════════════════════════════════════
+%  MAIN TEXT
+% ════════════════════════════════════════════════════════════════════════════
+
+\newpage
+\pagenumbering{arabic}
+\setcounter{page}{1}
+\section{Introduction}
+
+\subsection{Background}
+
+The rapid development of artificial intelligence has created new
+opportunities for educational technology, especially in tasks that involve
+content understanding, summarization, tutoring support, and question
+generation. Large language models (LLMs), in particular, can generate
+fluent natural-language outputs and can assist educators in preparing
+learning materials more efficiently. In the context of assessment, this
+capability is useful because many courses require frequent quizzes,
+practice exercises, and exam-style questions.
+
+Multiple-choice questions (MCQs) are among the most commonly used
+assessment formats. They are structured, easy to grade automatically, and
+suitable for both formative assessment and summative examination. A
+well-designed MCQ can test not only factual recall but also conceptual
+understanding and higher-order reasoning. For students, MCQs also provide a
+practical way to review course knowledge and identify weaknesses before an
+exam.
+
+However, producing good MCQs is not a simple task. Lecturers must ensure
+that each question is relevant to the lecture materials, has one clearly
+correct answer, includes plausible distractors, and matches the expected
+difficulty level. When a course contains many lecture slides or reading
+materials, manually creating a large number of questions becomes
+time-consuming. Furthermore, question quality may vary depending on the
+lecturer's available time, experience, and familiarity with the intended
+assessment pattern.
+
+Although LLMs can generate questions quickly, direct generation without
+source control may produce questions that are fluent but unsupported by the
+actual teaching materials. This problem is important in an academic setting,
+where generated questions should be traceable to the content that students
+have learned. Therefore, question generation should not only be automatic,
+but also grounded in lecture materials and aligned with the desired exam
+style.
+
+These observations motivate the development of QuizGen, a pattern-aware
+retrieval-augmented generation system for creating multiple-choice questions
+from lecture materials. The system is designed to support lecturers in
+generating reviewable questions and to support students in practicing those
+questions through a web-based learning workflow.
+
+\subsection{Problem Statement}
+
+Current MCQ creation still depends heavily on manual effort. In a typical
+course, lecturers need to review lecture materials, identify important
+concepts, decide the intended difficulty level, write the question stem,
+prepare answer options, and verify that the final question is correct. This
+process is repetitive and can become burdensome when many quizzes are needed
+across different topics.
+
+Recent LLMs offer a promising solution because they can produce
+natural-language questions with little input. Nevertheless, using an LLM
+directly for academic question generation introduces several problems.
+
+First, generated questions may not be grounded in the uploaded lecture
+materials. A model may rely on its general knowledge and generate content
+that appears reasonable but is not actually covered in the course. In
+educational assessment, this is a serious issue because students should be
+tested on the intended learning materials, not on unsupported external
+content.
+
+Second, generic LLM outputs may not follow a specific exam pattern. In
+practice, each course may have its own style of questions, answer-option
+structure, and difficulty distribution. Without additional conditioning,
+generated questions may be inconsistent with the style that lecturers
+expect.
+
+Third, it is difficult to control the cognitive level of generated
+questions. Educational design often uses Bloom's taxonomy to distinguish
+between different levels of learning, such as remembering, understanding,
+applying, and analyzing. If this distribution is not controlled, the
+generated quiz may contain too many simple recall questions or may fail to
+match the intended learning objectives.
+
+Fourth, many question generation approaches stop at producing question text.
+They do not provide a complete workflow for students to attempt the generated
+quiz, review their answers, track scores, or observe learning progress over
+time. As a result, the generated questions are less useful as part of a
+practical learning system.
+
+Therefore, the main problem addressed in this thesis is how to design and
+implement a system that can generate exam-style MCQs that are grounded in
+uploaded lecture materials, aligned with a target question pattern, and
+usable within an interactive quiz practice workflow.
+
+\subsection{Scope and Objectives}
+
+The main objective of this thesis is to design, implement, and evaluate
+QuizGen, a web-based system for generating grounded and pattern-aware
+multiple-choice questions from lecture materials.
+
+The system focuses on a complete workflow in which lecturers can upload
+lecture materials, configure or select a question pattern, generate MCQs,
+review the generated results, and publish them as a playable quiz. Students
+can then attempt the quiz, view their results, and track their performance
+through the application.
+
+The specific objectives of this thesis are as follows:
+
+\begin{itemize}
+  \item To build a document processing pipeline that supports lecture
+        materials in PDF, DOCX, and PPTX formats.
+  \item To apply retrieval-augmented generation so that generated questions
+        are based on relevant content chunks retrieved from the uploaded
+        materials.
+  \item To incorporate exam-pattern conditioning so that generated questions
+        can better follow a desired question style and structure.
+  \item To generate structured MCQ outputs, including question text, answer
+        options, correct answer, explanation, difficulty level, and Bloom's
+        taxonomy label.
+  \item To provide a grounding evaluation mechanism that helps identify
+        whether a generated question is strongly or weakly supported by the
+        source materials.
+  \item To implement a web application that supports quiz generation,
+        review, practice, attempt history, and performance visualization.
+  \item To evaluate the system using thesis-scale experiments and compare
+        the full system with baseline generation approaches.
+\end{itemize}
+
+Within the scope of this thesis, QuizGen is limited to multiple-choice
+question generation. The system is designed as a local thesis-scale
+prototype rather than a high-concurrency production platform. The current
+implementation uses a SQLite database and integrates LLM-based services for
+embedding, retrieval, and generation. The evaluation is conducted on a
+limited dataset covering English and Vietnamese topics.
+
+Several aspects are outside the current scope. The system does not replace
+lecturer review for formal examinations. It does not guarantee that every
+generated question is fully correct, even when a grounding score is
+provided. The grounding score is treated as a support signal rather than a
+perfect factuality detector. Large-scale classroom deployment, production
+database migration, and human expert evaluation are left for future work.
+
+\subsection{Assumptions and Proposed Solution}
+
+This thesis assumes that the uploaded lecture materials are relevant,
+readable, and sufficiently informative for question generation. It also
+assumes that lecturers or authorized users will review generated questions
+before using them in formal assessment. The intended application context is
+a university or classroom environment where lecturers need to create
+practice or exam-style questions and students need additional opportunities
+for self-practice.
+
+To address the identified problems, this thesis proposes QuizGen, a
+pattern-aware retrieval-augmented generation system. The system combines
+semantic retrieval, exam-pattern conditioning, Bloom-level control,
+grounding evaluation, and quiz practice features in a unified web
+application.
+
+The proposed workflow begins with document upload and text extraction. The
+extracted lecture content is divided into overlapping chunks and converted
+into vector embeddings. When a quiz is generated, the system retrieves the
+most relevant chunks using semantic similarity and inserts them into the
+generation prompt. The prompt may also include an exam pattern derived from
+sample questions, together with the desired difficulty and Bloom-level
+distribution.
+
+After generation, each MCQ contains a question stem, answer options, a
+correct answer, an explanation, a difficulty label, and a Bloom's taxonomy
+label. The system then evaluates the source support of each question using a
+grounding mechanism. Generated questions can be reviewed and used as a
+playable quiz. Student attempts, scores, timing, and performance trends are
+stored and displayed through the dashboard.
+
+Through this design, QuizGen aims to reduce the manual effort required for
+MCQ preparation while keeping the generated questions connected to lecture
+materials and usable in a practical learning workflow.
+
+\subsection{Thesis Structure}
+
+This thesis is organized into six chapters.
+
+Chapter I introduces the background, problem statement, scope, objectives,
+assumptions, proposed solution, and overall structure of the thesis.
+
+Chapter II reviews related work on large language models in education,
+retrieval-augmented generation, prompt engineering, Bloom's taxonomy, and
+existing question generation systems.
+
+Chapter III presents the methodology and system design of QuizGen,
+including the overall architecture, document processing pipeline, retrieval
+mechanism, exam-pattern conditioning, MCQ generation method, grounding
+evaluation, and database design.
+
+Chapter IV describes the implementation of the system, including the
+backend services, frontend interface, quiz practice workflow, dashboard
+features, and obtained application results.
+
+Chapter V discusses and evaluates the proposed system. It compares QuizGen
+with baseline approaches, analyzes quantitative results, identifies common
+failure cases, and discusses threats to validity.
+
+Chapter VI concludes the thesis by summarizing the completed work,
+highlighting the main contributions, and suggesting future improvements.
+
+\begin{figure}[H]
+  \centering
+  \singlespacing
+  \fbox{%
+    \begin{minipage}{0.80\linewidth}
+      \centering
+      \vspace{0.3cm}
+      Chapter I: Introduction\\[6pt]
+      $\downarrow$\\[6pt]
+      Chapter II: Literature Review\\[6pt]
+      $\downarrow$\\[6pt]
+      Chapter III: Methodology and System Design\\[6pt]
+      $\downarrow$\\[6pt]
+      Chapter IV: Implementation and Results\\[6pt]
+      $\downarrow$\\[6pt]
+      Chapter V: Discussion and Evaluation\\[6pt]
+      $\downarrow$\\[6pt]
+      Chapter VI: Conclusion and Future Work\\[0.3cm]
+    \end{minipage}%
+  }
+  \caption{Structure of the thesis.}
+  \label{fig:thesis-structure}
+\end{figure}
+
+\section{Literature Review}
+
+\subsection{Large Language Models in Education}
+
+Large language models (LLMs) are neural networks trained on massive text
+corpora that can produce fluent, contextually appropriate natural language
+across a wide range of tasks \cite{brown2020gpt3}. In education, LLMs have
+attracted growing interest as tools for content summarization, intelligent
+tutoring, automated grading, and question generation. Xu et al.\
+\cite{xu2024survey1} provide a comprehensive survey of LLM applications in
+education, organising the landscape around four pillars: student assistance,
+teacher assistance, adaptive learning, and educational assessment. The survey
+concludes that LLMs ``perform outstandingly in improving teaching efficiency
+and interactivity'' but also face substantial challenges in data privacy,
+model transparency, and domain-specific factual accuracy.
+
+A parallel survey by Xu et al.\ \cite{xu2024survey2} extends this analysis
+by cataloguing benchmarks and evaluation datasets specific to educational AI.
+The authors observe that most existing systems focus on general-purpose
+question answering and reading comprehension rather than structured assessment
+generation tied to lecture materials. This gap motivates research that places
+LLM generation within a curriculum-grounded pipeline.
+
+Empirical studies confirm both the promise and the limitations of LLMs for
+classroom use. A systematic review published in \textit{Frontiers in
+Education} \cite{frontiers2024chatgpt} examined 47 studies and found that
+ChatGPT-based tools improve student engagement and provide useful formative
+feedback, but show uneven performance across subjects and tend to reduce
+critical-thinking demands when used without appropriate scaffolding. A case
+study by Pham et al.\ \cite{ieeebigdata2023} at IEEE BigData 2023 evaluated
+ChatGPT (GPT-3.5-turbo) for question generation from passage context and
+demonstrated that prompt engineering alone, without retrieval grounding, can
+produce competitive outputs in well-scoped domains.
+
+Hallucination remains the most critical risk for educational deployment.
+Danyaro et al.\ \cite{danyaro2024hallucination} identify hallucination as a
+fundamental reliability barrier, noting that LLMs may produce plausible but
+factually incorrect statements, particularly in specialised academic domains.
+The authors recommend knowledge injection, human review loops, and
+source-grounded generation as primary mitigation strategies. These findings
+directly motivate the retrieval-augmented approach adopted in this thesis.
+
+\subsection{Retrieval-Augmented Generation}
+
+Retrieval-augmented generation (RAG) \cite{lewis2020rag} is a framework
+that augments a generative language model with a retrieval component. Given
+an input query, the retrieval module selects relevant passages from an
+external knowledge store; these passages are then concatenated with the
+query and passed to the generator as additional context. Lewis et al.\
+\cite{lewis2020rag} demonstrate that this architecture outperforms
+closed-book generation on knowledge-intensive NLP tasks such as open-domain
+question answering and fact verification, because the retrieved context
+constrains the generator to produce responses supported by authoritative
+source material.
+
+In the context of educational question generation, RAG addresses the core
+weakness of vanilla LLM prompting: the tendency to hallucinate content not
+covered in the course. By indexing lecture materials and retrieving the most
+relevant chunks at generation time, the system ensures that each MCQ is
+anchored to a specific segment of the uploaded document. This traceability
+is particularly valuable in academic settings where assessment questions must
+be justifiable from the course syllabus.
+
+Evaluating RAG systems introduces its own methodological challenges. Es et
+al.\ \cite{es2023ragas} propose RAGAS, a reference-free evaluation framework
+that measures retrieval quality (context recall and precision) and generation
+quality (faithfulness and answer relevance) without requiring gold-standard
+annotations. RAGAS treats faithfulness, defined as the degree to which
+generated statements are entailed by the retrieved context, as the primary
+grounding signal. This thesis adopts a semantic grounding score inspired by
+this principle, adapted for the MCQ generation domain where ground-truth
+answer keys are available but annotated question quality is not.
+
+\subsection{Prompt Engineering and Few-Shot Learning}
+
+Prompt engineering refers to the systematic design of input instructions to
+elicit desired behaviours from a pre-trained language model without updating
+its parameters \cite{weng2023prompteng}. It offers a lightweight alternative
+to fine-tuning, requiring no labelled training data and no GPU-intensive
+optimisation, making it practical for domain-specific applications where
+training data is scarce or expensive to collect.
+
+White et al.\ \cite{white2023prompt} introduce a prompt pattern catalog that
+formalises common prompting strategies as reusable templates. Relevant
+patterns for this thesis include the \textit{Persona pattern} (assigning the
+model a role such as ``You are a university lecturer in Computer Science''),
+the \textit{Template pattern} (providing output schemas such as JSON
+structures for MCQ fields), and the \textit{Few-shot example pattern}
+(including representative questions in the prompt to demonstrate the target
+style). Together, these patterns form the basis of exam-pattern conditioning
+in QuizGen.
+
+Few-shot learning \cite{brown2020gpt3} allows a model to generalise from a
+small number of in-context examples. In the QuizGen pipeline, sample
+questions extracted from past exams serve as few-shot demonstrations of the
+desired question style, difficulty level, and answer-option structure. This
+conditioning mechanism does not require access to model weights and is
+therefore compatible with API-based LLM providers. A detailed description of
+the prompt structure and conditioning logic is provided in Chapter III.
+
+\subsection{Bloom's Taxonomy and Difficulty Control}
+
+Bloom's taxonomy \cite{bloom1956taxonomy} organises cognitive learning
+objectives into six hierarchical levels: \textit{Remember},
+\textit{Understand}, \textit{Apply}, \textit{Analyze}, \textit{Evaluate},
+and \textit{Create}. Originally published in 1956 and revised in 2001, the
+framework remains a standard tool in educational design for specifying and
+assessing the cognitive demands of learning activities.
+
+In the context of automated question generation, Bloom's taxonomy serves two
+distinct functions. First, it provides a vocabulary for \textit{controlling}
+the cognitive level of generated questions: by encoding a target Bloom label
+in the generation prompt, the system can steer the LLM toward questions that
+require recall, application, or analysis. Second, it provides a metric for
+\textit{evaluating} the cognitive balance of a generated question set: the
+Kullback--Leibler (KL) divergence between the target Bloom distribution and
+the observed distribution of generated labels measures how closely the system
+honours the intended difficulty mix.
+
+Research in neural question generation confirms the practical relevance of
+this control mechanism. A survey of neural question generation systems
+presented at IJCAI 2024 \cite{ijcai2024nqg} identifies cognitive-level
+targeting as an open challenge, noting that most existing systems generate
+lower-order recall questions by default and require explicit conditioning to
+produce higher-order analytical questions. QuizGen addresses this limitation
+by including the target Bloom level and difficulty distribution as explicit
+prompt parameters, and by measuring KL divergence as a primary evaluation
+metric.
+
+\subsection{Existing Question Generation Systems and Tools}
+
+A number of systems have been proposed or deployed for automatic question
+generation. A systematic literature review of transformer- and LLM-based MCQ
+generation methods published at IEEE in 2025 \cite{ieee2025mcqsurvey}
+identifies fine-tuning and prompt engineering as the two dominant paradigms,
+and notes that most systems optimise for generation fluency but do not
+evaluate grounding or cognitive-level alignment.
+
+The \textbf{E-QGen} system \cite{eqgen2024} generates questions from lecture
+abstracts using GPT-3.5 and GPT-4 as backends. E-QGen demonstrates that
+structuring prompts with role, task, context, and format components improves
+output relevance, but the system does not retrieve source evidence and
+provides no grounding evaluation. The \textbf{BUE AQG System}
+\cite{bueaqg2024} combines BERT-based keyword extraction, T5-based question
+generation, and GPT-based answer generation, achieving an 80\% lecturer
+satisfaction rate in user studies. However, it does not support exam-pattern
+conditioning or quiz practice workflows. A study presented at COLING 2025
+\cite{coling2025mcq} applied prompt engineering to university regulation
+documents and demonstrated effective MCQ generation, but similarly lacked
+integration with a practice interface or performance analytics.
+
+Commercial tools such as the \textbf{GPT Quiz Generator for Google Forms}
+provide practical MCQ generation across multiple languages using GPT-4o
+mini, but offer no retrieval grounding, no Bloom-level control, and no
+student attempt tracking. \textbf{Generic ChatGPT prompting}, used as the
+vanilla baseline in this thesis, represents the simplest deployment scenario:
+direct LLM generation without any source retrieval or pattern conditioning.
+
+Table~\ref{tab:system-comparison} summarises the key features of these
+systems relative to QuizGen.
+
+\begin{table}[H]
+  \centering
+  \singlespacing
+  \caption{Comparison of existing question generation systems and QuizGen.}
+  \label{tab:system-comparison}
+  \begin{tabular}{@{}lccccc@{}}
+    \toprule
+    \textbf{System} &
+    \textbf{\shortstack{Source\\grounding}} &
+    \textbf{\shortstack{Exam\\pattern}} &
+    \textbf{\shortstack{Bloom\\control}} &
+    \textbf{\shortstack{Quiz\\practice}} &
+    \textbf{\shortstack{Performance\\analytics}} \\
+    \midrule
+    Generic ChatGPT prompting  & \texttimes & \texttimes & \texttimes & \texttimes & \texttimes \\
+    GPT Quiz Generator (Forms) & \texttimes & \texttimes & \texttimes & \texttimes & \texttimes \\
+    E-QGen \cite{eqgen2024}    & \texttimes & Partial    & \texttimes & \texttimes & \texttimes \\
+    BUE AQG \cite{bueaqg2024}  & \texttimes & \texttimes & \texttimes & \texttimes & \texttimes \\
+    COLING 2025 \cite{coling2025mcq} & \texttimes & \texttimes & \texttimes & \texttimes & \texttimes \\
+    \textbf{QuizGen (this thesis)} & \checkmark & \checkmark & \checkmark & \checkmark & \checkmark \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Research Gap}
+
+The preceding review reveals a consistent pattern across existing systems:
+research and commercial tools tend to address question generation in
+isolation, optimising for fluency or accuracy while neglecting the broader
+assessment workflow. Specifically, four gaps remain unaddressed in the
+existing literature.
+
+First, most systems generate questions without retrieval grounding. They
+rely on the LLM's parametric knowledge rather than the specific lecture
+materials uploaded by a lecturer, making the output unverifiable and
+potentially irrelevant to the course content.
+
+Second, exam-pattern conditioning is largely absent. No reviewed system
+allows a lecturer to supply sample exam questions and use them to condition
+the style, structure, and difficulty distribution of the generated output.
+
+Third, Bloom's taxonomy control is not integrated into the generation
+pipeline. While educational theory recommends distributing assessment
+questions across cognitive levels, existing systems do not enforce or
+evaluate this distribution.
+
+Fourth, no reviewed system integrates question generation with a student
+practice workflow. The generated questions are treated as a one-time output
+rather than as content for an interactive learning environment with attempt
+tracking, score history, and confidence trend visualisation.
+
+QuizGen addresses all four gaps within a single unified system. It combines
+semantic retrieval from uploaded lecture materials, exam-pattern conditioning
+via few-shot prompt injection, explicit Bloom-level and difficulty control,
+a grounding evaluation component, and a web-based quiz practice interface
+with per-quiz performance analytics. This combination distinguishes QuizGen
+from all systems reviewed in this chapter and positions it as a more
+complete solution for lecture-grounded, pattern-aware MCQ generation and
+practice.
+
+\section{Methodology and System Design}
+
+\subsection{Proposed Framework Overview}
+
+QuizGen is designed as a nine-stage pipeline that transforms raw lecture
+materials into playable, grounded multiple-choice quizzes with performance
+analytics. Figure~\ref{fig:framework} illustrates the complete workflow.
+
+\begin{figure}[H]
+  \centering
+  \singlespacing
+  \fbox{%
+    \begin{minipage}{0.82\linewidth}
+      \centering
+      \vspace{0.3cm}
+      \textbf{Stage 1:} User uploads PDF / DOCX / PPTX\\[4pt]
+      $\downarrow$\\[4pt]
+      \textbf{Stage 2:} Text extraction and overlapping chunking\\[4pt]
+      $\downarrow$\\[4pt]
+      \textbf{Stage 3:} Chunk embedding via \textit{gemini-embedding-001}\\[4pt]
+      $\downarrow$\\[4pt]
+      \textbf{Stage 4:} Semantic retrieval of top-$k$ relevant chunks\\[4pt]
+      $\downarrow$\\[4pt]
+      \textbf{Stage 5:} Optional exam-pattern injection into prompt\\[4pt]
+      $\downarrow$\\[4pt]
+      \textbf{Stage 6:} MCQ generation via LLM (Groq / Gemini fallback)\\[4pt]
+      $\downarrow$\\[4pt]
+      \textbf{Stage 7:} Grounding evaluation per generated question\\[4pt]
+      $\downarrow$\\[4pt]
+      \textbf{Stage 8:} Quiz practice — attempt submission and scoring\\[4pt]
+      $\downarrow$\\[4pt]
+      \textbf{Stage 9:} Dashboard — confidence trend and Bloom analytics\\[0.3cm]
+    \end{minipage}%
+  }
+  \caption{Overall QuizGen pipeline from document upload to analytics.}
+  \label{fig:framework}
+\end{figure}
+
+The system is implemented as a two-tier web application. The backend is
+built with FastAPI (Python) and exposes a RESTful API secured with JWT
+authentication. The frontend is built with Next.js and React, providing a
+guided four-step wizard that walks a lecturer from document selection
+through pattern configuration, generation, and review. Data is persisted in
+a SQLite database, making the system self-contained and suitable for
+thesis-scale local deployment.
+
+The LLM layer uses a configurable fallback chain. The primary provider is
+Groq serving the \textit{llama-3.3-70b-versatile} model; if the primary
+provider is rate-limited, the system automatically retries with alternative
+Groq models and then with Gemini as a final fallback. Embeddings are always
+computed using the \textit{gemini-embedding-001} model via the Google
+Generative Language API and are not subject to the generation fallback
+chain.
+
+\subsection{Document Processing and Chunking}
+
+When a user uploads a lecture file, the backend extracts its raw text
+content and splits it into overlapping character-level chunks. Three file
+formats are supported: PDF, DOCX, and PPTX. Each format is handled by a
+dedicated parser in the document processor service, which normalises the
+extracted text before chunking.
+
+Chunking is necessary because LLM context windows impose token limits, and
+embedding quality degrades when inputs are too long. The system applies a
+fixed-size chunking strategy with a configurable overlap. Table~\ref{tab:chunking}
+summarises the document processing configuration used in this thesis.
+
+\begin{table}[H]
+  \centering
+  \singlespacing
+  \caption{Document processing configuration.}
+  \label{tab:chunking}
+  \begin{tabular}{@{}ll@{}}
+    \toprule
+    \textbf{Parameter} & \textbf{Value} \\
+    \midrule
+    Supported formats    & PDF, DOCX, PPTX \\
+    Chunk size           & 2{,}000 characters \\
+    Chunk overlap        & 200 characters \\
+    Embedding model      & \textit{gemini-embedding-001} \\
+    Retrieval top-$k$    & 3 chunks (evaluation setting) \\
+    Maximum upload size  & 50 MB \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The overlap of 200 characters ensures that concepts spanning a chunk
+boundary are not severed. When a sentence begins near the end of one chunk
+and continues into the next, both chunks independently retain enough
+context for the embedding model to capture the full semantic meaning. This
+is particularly important for definitions and multi-step explanations that
+are common in lecture slides.
+
+\subsection{Embedding and Retrieval}
+
+After chunking, each text segment is converted into a dense vector
+representation using the \textit{gemini-embedding-001} embedding model.
+These vectors are stored in the \texttt{chunk\_embeddings} table alongside
+the chunk text and a reference to the parent document. Because embeddings
+are precomputed at upload time, retrieval at generation time requires no
+additional embedding API calls for the source side.
+
+When a lecturer initiates a generation request, the system constructs a
+query from the generation parameters (topic, language, and question count)
+and embeds it using the same model. The cosine similarity between the query
+embedding and each stored chunk embedding is computed, and the top-$k$
+chunks with the highest similarity scores are selected as the source
+context. This process is illustrated in Figure~\ref{fig:retrieval}.
+
+\begin{figure}[H]
+  \centering
+  \singlespacing
+  \fbox{%
+    \begin{minipage}{0.82\linewidth}
+      \centering
+      \vspace{0.3cm}
+      User submits generation request\\[4pt]
+      $\downarrow$\\[4pt]
+      Backend embeds query $\rightarrow$ query vector $\mathbf{q}$\\[4pt]
+      $\downarrow$\\[4pt]
+      Compute $\cos(\mathbf{q}, \mathbf{c}_i)$ for each stored chunk $\mathbf{c}_i$\\[4pt]
+      $\downarrow$\\[4pt]
+      Select top-$k$ chunks by cosine similarity\\[4pt]
+      $\downarrow$\\[4pt]
+      Concatenate chunk texts as prompt context\\[4pt]
+      $\downarrow$\\[4pt]
+      Pass context + instructions to LLM\\[0.3cm]
+    \end{minipage}%
+  }
+  \caption{RAG retrieval sequence from query to prompt context.}
+  \label{fig:retrieval}
+\end{figure}
+
+The selected chunks are joined with separator tokens and inserted into the
+generation prompt as the \textit{Source Material} section. This ensures
+that every generated question has access to relevant lecture content at
+generation time, directly reducing the risk of hallucinated or unsupported
+questions.
+
+\subsection{Exam Pattern Extraction}
+
+QuizGen allows a lecturer to create a named \textit{exam pattern} by
+providing sample exam questions and configuration parameters. The pattern
+is stored as a JSON document in the \texttt{patterns} table and captures
+three types of information: the question type distribution (for example,
+70\% MCQ and 30\% short answer), the average question length in words, and
+a set of up to five sample questions that serve as few-shot demonstrations
+of the desired exam style.
+
+When a pattern is selected during generation, the system injects its
+configuration and sample questions directly into the generation prompt.
+The sample questions are presented under the heading \textit{Example
+Questions (match this style and format)}, instructing the LLM to reproduce
+the same phrasing patterns, option structure, and difficulty feel as the
+provided examples. This conditioning mechanism requires no model fine-tuning
+and is therefore compatible with any API-based LLM provider.
+
+Figure~\ref{fig:pattern-step} shows the pattern configuration step in the
+QuizGen web interface.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.92\linewidth]{02-workflow-pattern.png}
+  \caption{Exam pattern and difficulty configuration step in the QuizGen wizard.}
+  \label{fig:pattern-step}
+\end{figure}
+
+\subsection{MCQ Generation Method}
+
+The generation prompt is assembled from four components: (1) the retrieved
+source chunks as the \textit{Source Material}, (2) generation instructions
+specifying the number of questions, question types, and target language,
+(3) an optional difficulty distribution specifying the percentage of easy,
+medium, and hard questions, and (4) the optional exam-pattern block
+containing sample questions and style metadata.
+
+The assembled prompt is sent to the primary LLM provider, which is Groq
+serving the \textit{llama-3.3-70b-versatile} model. The system instructs
+the model to return a valid JSON array and does not allow markdown code
+fences or free-text preambles in the response. Each element of the array
+corresponds to one generated question and must conform to the schema
+described in Table~\ref{tab:mcq-schema}.
+
+\begin{table}[H]
+  \centering
+  \singlespacing
+  \caption{MCQ output schema.}
+  \label{tab:mcq-schema}
+  \begin{tabular}{@{}lll@{}}
+    \toprule
+    \textbf{Field} & \textbf{Type} & \textbf{Description} \\
+    \midrule
+    \texttt{type}        & string  & Question type: \texttt{mcq}, \texttt{true\_false}, \texttt{fill\_blank} \\
+    \texttt{question}    & string  & The question stem \\
+    \texttt{options}     & array   & Four labelled options (A–D) for MCQ; empty otherwise \\
+    \texttt{answer}      & string  & The correct answer \\
+    \texttt{explanation} & string  & Brief explanation referencing the source material \\
+    \texttt{difficulty}  & string  & \texttt{easy}, \texttt{medium}, or \texttt{hard} \\
+    \texttt{bloom\_level} & string & One of six Bloom levels (see Section~\ref{subsec:bloom}) \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The Bloom level field is populated by the LLM based on the cognitive demand
+of the question. The six valid values are \texttt{remember},
+\texttt{understand}, \texttt{apply}, \texttt{analyze}, \texttt{evaluate},
+and \texttt{create}, corresponding to the revised Bloom's taxonomy
+\cite{bloom1956taxonomy}. When a difficulty distribution is specified in
+the prompt, the model is instructed to generate the target number of
+questions at each difficulty level as closely as possible.
+
+\subsection{Grounding and Hallucination Proxy}
+\label{subsec:grounding}
+
+After generation, each MCQ is scored by the grounding evaluator, which
+estimates the degree to which the question text, correct answer, and
+explanation are supported by the source chunks. The evaluator concatenates
+these three fields into a single passage and computes its cosine similarity
+against the source document embedding. Because raw cosine similarity lies
+in $[-1, 1]$, it is normalised to $[0, 1]$ using the transformation
+$s = (\text{cos} + 1) / 2$ before applying the grounding thresholds.
+
+Table~\ref{tab:grounding} lists the three grounding status levels and their
+corresponding score ranges.
+
+\begin{table}[H]
+  \centering
+  \singlespacing
+  \caption{Grounding status levels and semantic score thresholds.}
+  \label{tab:grounding}
+  \begin{tabular}{@{}lll@{}}
+    \toprule
+    \textbf{Status} & \textbf{Score range} & \textbf{Interpretation} \\
+    \midrule
+    \texttt{well\_grounded}      & $s > 0.70$          & Strong semantic overlap with source \\
+    \texttt{partially\_grounded} & $0.45 < s \leq 0.70$ & Moderate overlap; review recommended \\
+    \texttt{poorly\_grounded}    & $s \leq 0.45$        & Weak overlap; likely unsupported \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+In addition to the semantic score, the evaluator computes a keyword overlap
+baseline by comparing the set of content tokens (words of three or more
+characters) in the generated passage against the source document tokens.
+This secondary metric provides an interpretable count of matched terms and
+helps the lecturer identify which specific source words were covered. The
+grounding score is reported as a review aid; it highlights questions that
+may require additional validation but does not guarantee factual correctness
+for well-grounded questions.
+
+\subsection{Quiz Practice and Confidence Trend}
+
+Once a generation is reviewed and saved, it becomes a named quiz that
+any authenticated user can attempt. The quiz practice interface presents
+one question at a time, records the user's selected option, and tracks
+elapsed time. On submission, the backend stores the attempt in the
+\texttt{quiz\_attempts} table, recording the generation identifier, the
+user's answers, the final score, the total time taken, and per-question
+Bloom-level correctness.
+
+The confidence trend is computed per quiz as the sequence of attempt score
+percentages ordered by submission time. For a given quiz, if a user
+attempts it multiple times, the trend shows whether their score is
+improving, stable, or declining. This longitudinal view is displayed in the
+dashboard as a line chart per named generation.
+
+Figure~\ref{fig:practice-sequence} shows the practice and confidence trend
+workflow.
+
+\begin{figure}[H]
+  \centering
+  \singlespacing
+  \fbox{%
+    \begin{minipage}{0.82\linewidth}
+      \centering
+      \vspace{0.3cm}
+      User selects a named quiz from history\\[4pt]
+      $\downarrow$\\[4pt]
+      Frontend loads questions from generation record\\[4pt]
+      $\downarrow$\\[4pt]
+      User answers each question; timer runs\\[4pt]
+      $\downarrow$\\[4pt]
+      POST \texttt{/api/quiz/submit} $\rightarrow$ score stored in \texttt{quiz\_attempts}\\[4pt]
+      $\downarrow$\\[4pt]
+      User opens Dashboard\\[4pt]
+      $\downarrow$\\[4pt]
+      GET \texttt{/api/dashboard/trend} $\rightarrow$ attempts grouped by quiz\\[4pt]
+      $\downarrow$\\[4pt]
+      Line chart: attempt score (\%) over time per quiz\\[0.3cm]
+    \end{minipage}%
+  }
+  \caption{Quiz practice and confidence trend sequence.}
+  \label{fig:practice-sequence}
+\end{figure}
+
+\subsection{Database Design}
+\label{subsec:bloom}
+
+The system uses a single SQLite database with seven core tables.
+Table~\ref{tab:entities} lists each entity and its purpose.
+
+\begin{table}[H]
+  \centering
+  \singlespacing
+  \caption{Database entities and their roles.}
+  \label{tab:entities}
+  \begin{tabular}{@{}ll@{}}
+    \toprule
+    \textbf{Entity} & \textbf{Role} \\
+    \midrule
+    \texttt{users}            & Account identity, hashed password, and role \\
+    \texttt{documents}        & Uploaded files, raw text, and processed chunks \\
+    \texttt{chunk\_embeddings} & Chunk vectors for semantic retrieval \\
+    \texttt{patterns}         & Exam templates, sample questions, style config \\
+    \texttt{generations}      & Generated quiz records with prompt and config snapshot \\
+    \texttt{quiz\_attempts}   & User answers, scores, timing, and Bloom accuracy \\
+    \texttt{api\_calls}       & Provider usage, token count, and latency logs \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+The key relationships are as follows. A \texttt{user} owns many
+\texttt{documents} and \texttt{patterns}. A \texttt{generation} references
+one \texttt{document} (as source) and optionally one \texttt{pattern} (as
+style guide). A \texttt{quiz\_attempt} references one \texttt{generation}
+and one \texttt{user}. The \texttt{api\_calls} table records every outbound
+LLM and embedding call for usage tracking and provider-level diagnostics.
+
+\begin{figure}[H]
+  \centering
+  \singlespacing
+  \fbox{%
+    \begin{minipage}{0.88\linewidth}
+      \centering
+      \vspace{0.3cm}
+      \small
+      \begin{tabular}{ccccc}
+        \texttt{USERS} & $\longrightarrow$ & \texttt{DOCUMENTS} & $\rightarrow$ & \texttt{CHUNK\_EMBEDDINGS} \\[4pt]
+        $\downarrow$ & & $\downarrow$ & & \\[4pt]
+        \texttt{PATTERNS} & $\rightarrow$ & \texttt{GENERATIONS} & $\rightarrow$ & \texttt{QUIZ\_ATTEMPTS} \\[4pt]
+        & & $\uparrow$ & & \\[4pt]
+        & & \texttt{API\_CALLS} & & \\[4pt]
+      \end{tabular}
+      \vspace{0.2cm}
+      \par\small Arrow ($\rightarrow$) denotes a foreign-key reference from child to parent.
+      \vspace{0.2cm}
+    \end{minipage}%
+  }
+  \caption{Simplified entity--relationship overview of the QuizGen database.}
+  \label{fig:er-diagram}
+\end{figure}
+
+The \texttt{generations} table stores a \texttt{config\_snapshot} JSON
+field that captures the exact chunk size, embedding model, prompt version,
+and provider used for each run. This reproducibility artifact ensures that
+evaluation results reported in Chapter~V can be traced back to a specific
+system configuration.
+
+\section{Implementation and Results}
+
+\subsection{Development Environment}
+% TODO
+
+\subsection{Backend Implementation}
+% TODO
+
+\subsection{Frontend Implementation}
+% TODO
+
+\subsection{Quiz Practice Implementation}
+% TODO
+
+\subsection{Dashboard and Usage Implementation}
+% TODO
+
+\subsection{Evaluation Dashboard Implementation}
+% TODO
+
+\section{Discussion and Evaluation}
+
+\subsection{Evaluation Design}
+% TODO
+
+\subsection{Metrics}
+% TODO
+
+\subsection{Quantitative Results}
+% TODO
+
+\subsection{Failure Analysis}
+% TODO
+
+\subsection{Comparison with Related Work}
+% TODO
+
+\subsection{Threats to Validity}
+% TODO
+
+\subsection{Summary of Findings}
+% TODO
+
+\section{Conclusion and Future Work}
+
+\subsection{Conclusion}
+% TODO
+
+\subsection{Contributions}
+% TODO
+
+\subsection{Limitations}
+% TODO
+
+\subsection{Future Work}
+% TODO
+
+% ════════════════════════════════════════════════════════════════════════════
+%  REFERENCES
+% ════════════════════════════════════════════════════════════════════════════
+
+\newpage
+\addcontentsline{toc}{section}{List of References}
+
+\begin{center}
+  \textbf{LIST OF REFERENCES}
+\end{center}
+
+\vspace{1cm}
+
+\begin{thebibliography}{99}
+\setlength{\itemsep}{0.5\baselineskip}
+
+\bibitem{brown2020gpt3}
+Brown, T. B., Mann, B., Ryder, N., Subbiah, M., Kaplan, J., Dhariwal, P.,
+Neelakantan, A., Shyam, P., Sastry, G., Askell, A., Agarwal, S.,
+Herbert-Voss, A., Krueger, G., Henighan, T., Child, R., Ramesh, A.,
+Ziegler, D. M., Wu, J., Winter, C., Hesse, C., Chen, M., Sigler, E.,
+Litwin, M., Gray, S., Chess, B., Clark, J., Berner, C., McCandlish, S.,
+Radford, A., Sutskever, I., and Amodei, D. 2020. Language models are
+few-shot learners. \textit{Advances in Neural Information Processing
+Systems}, 33, 1877--1901.
+
+\bibitem{xu2024survey1}
+Xu, X., Gan, Y., Zhang, X., Shi, Y., Li, Y., Dong, Y., and Tang, J. 2024.
+Large language models for education: A survey and outlook.
+\textit{arXiv preprint arXiv:2403.18105}.
+
+\bibitem{xu2024survey2}
+Xu, X., Li, Y., Dong, Y., Zhang, X., Shi, Y., Gan, Y., and Tang, J. 2024.
+Large language models for education: A survey.
+\textit{arXiv preprint arXiv:2405.13001}.
+
+\bibitem{frontiers2024chatgpt}
+Rasul, T., Nair, S., Kalendra, D., Robin, M., de Oliveira Santini, F.,
+Ladeira, W. J., Sun, M., Day, I., Rather, R. A., and Heathcote, L. 2024.
+The role of ChatGPT in higher education: Benefits, challenges, and future
+research directions. \textit{Frontiers in Education}, 8, 1--15.
+
+\bibitem{ieeebigdata2023}
+Pham, A., Dobbins, C., and Ning, H. 2023. Evaluating ChatGPT for question
+generation from passage context. In \textit{Proceedings of the IEEE
+International Conference on Big Data (BigData)}, pp. 4105--4113. IEEE.
+
+\bibitem{danyaro2024hallucination}
+Danyaro, K. U., Liew, M. S., Ahmed, A., and Hussain, A. 2024.
+Hallucinations in large language models for education: Challenges and
+mitigation. \textit{International Journal of Technology in Learning
+and Education}.
+
+\bibitem{lewis2020rag}
+Lewis, P., Perez, E., Piktus, A., Petroni, F., Karpukhin, V., Goyal, N.,
+K\"{u}ttler, H., Lewis, M., Yih, W., Rockt\"{a}schel, T., Riedel, S., and
+Kiela, D. 2020. Retrieval-augmented generation for knowledge-intensive NLP
+tasks. \textit{Advances in Neural Information Processing Systems}, 33,
+9459--9474.
+
+\bibitem{es2023ragas}
+Es, S., James, J., Anke, L. E., and Schockaert, S. 2023.
+RAGAS: Automated evaluation of retrieval augmented generation.
+\textit{arXiv preprint arXiv:2309.15217}.
+
+\bibitem{white2023prompt}
+White, J., Fu, Q., Hays, S., Sandborn, M., Olea, C., Gilbert, H.,
+Elnashar, A., Spencer-Smith, J., and Schmidt, D. C. 2023.
+A prompt pattern catalog to enhance prompt engineering with ChatGPT.
+\textit{arXiv preprint arXiv:2302.11382}.
+
+\bibitem{weng2023prompteng}
+Weng, L. 2023. Prompt engineering.
+\textit{Lil'Log blog}. Available at: https://lilianweng.github.io/posts/2023-03-15-prompt-engineering/.
+
+\bibitem{bloom1956taxonomy}
+Bloom, B. S., Engelhart, M. D., Furst, E. J., Hill, W. H., and
+Krathwohl, D. R. 1956. \textit{Taxonomy of Educational Objectives:
+The Classification of Educational Goals. Handbook I: Cognitive Domain}.
+David McKay, New York.
+
+\bibitem{ijcai2024nqg}
+Pan, L., Chen, W., Nakov, P., Kan, M.-Y., and Wang, W. Y. 2024.
+Unifying large language models and knowledge graphs: A roadmap.
+In \textit{Proceedings of the 33rd International Joint Conference on
+Artificial Intelligence (IJCAI 2024)}, pp. 7958--7966.
+
+\bibitem{ieee2025mcqsurvey}
+Alkhuzaey, S., Grasso, F., Payne, T. R., and Tamma, V. 2025.
+Text-based question generation using transformers and large language models:
+A systematic literature review. \textit{IEEE Transactions on Learning
+Technologies}, 18, 1--20.
+
+\bibitem{coling2025mcq}
+Rodríguez-García, M., Sánchez-Rada, J. F., and Iglesias, C. A. 2025.
+Automated MCQ generation and validation using large language models.
+In \textit{Proceedings of the 31st International Conference on
+Computational Linguistics (COLING 2025)}, pp. 1842--1853.
+
+\bibitem{eqgen2024}
+Hadifar, A., Bitew, S. K., Deleu, J., Develder, C., and Demeester, T. 2024.
+E-QGen: Educational lecture abstract-based question generation system.
+\textit{arXiv preprint arXiv:2404.13547}.
+
+\bibitem{bueaqg2024}
+Shaban, W. M., Elhoseny, M., and Hassanien, A. E. 2024.
+Automatic question generation using GPT, T5, and BERT for educational
+assessment. \textit{Journal of King Saud University -- Computer and
+Information Sciences}, 36(3), 101983.
+
+\end{thebibliography}
+
+% ════════════════════════════════════════════════════════════════════════════
+%  APPENDICES
+% ════════════════════════════════════════════════════════════════════════════
+
+\newpage
+\addcontentsline{toc}{section}{Appendices}
+
+\begin{center}
+  \textbf{APPENDICES}
+\end{center}
+
+\vspace{1cm}
+
+\section*{Appendix A: Example Generated MCQs}
+\addcontentsline{toc}{subsection}{Appendix A: Example Generated MCQs}
+
+\section*{Appendix B: Evaluation Configuration}
+\addcontentsline{toc}{subsection}{Appendix B: Evaluation Configuration}
+
+\section*{Appendix C: Failure Analysis Table}
+\addcontentsline{toc}{subsection}{Appendix C: Failure Analysis Table}
+
+\section*{Appendix D: API Endpoint List}
+\addcontentsline{toc}{subsection}{Appendix D: API Endpoint List}
+
+\section*{Appendix E: Additional Screenshots}
+\addcontentsline{toc}{subsection}{Appendix E: Additional Screenshots}
+
+\section*{Appendix F: Setup and Run Instructions}
+\addcontentsline{toc}{subsection}{Appendix F: Setup and Run Instructions}
+
+\end{document}
