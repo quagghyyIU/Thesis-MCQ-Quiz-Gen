@@ -23,6 +23,8 @@ Target internal freeze:
   - [ ] `eval/results/failure_analysis.md`
   - [ ] `eval/results/history.md`
 - [x] Screenshots are captured and stored under `doc/screenshots/`.
+- [ ] Full function test plan is prepared in `doc/thesis/testing/full_function_test_plan.md`.
+- [ ] Thesis demo edge-case rehearsal plan is prepared in `doc/thesis/testing/thesis_demo_edge_cases.md`.
 - [ ] Runtime database handling is clear:
   - [ ] If using demo DB, document that it is intentional.
   - [ ] If not using demo DB, exclude local runtime data from submission.
@@ -47,6 +49,8 @@ Target internal freeze:
 - [x] Backend Python compile check passed
 - [x] Core evaluation command passed
 - [x] Local smoke test completed through screenshot capture with local frontend/backend
+- [ ] Full function P0 checklist completed before defense
+- [ ] Thesis demo edge-case rehearsal completed before defense
 - [ ] `pytest` not run: dependency is unavailable in the current Python environment
 
 ## Submission Rule

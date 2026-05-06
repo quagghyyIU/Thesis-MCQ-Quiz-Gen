@@ -13,7 +13,6 @@ Designed for my thesis to support lecturers in rapidly creating consistent, well
   - Extract, clean, and chunk text (sliding window with overlap)
   - Generate **3072‑dim semantic embeddings** via Gemini
   - Store vectors in SQLite for fast semantic search
-
 - **Exam pattern extraction**
   - Paste a full exam paper **or upload** `PDF/DOCX/PPTX`
   - Optional **custom instructions** (toggle on/off) to constrain extraction/generation behavior
@@ -21,7 +20,6 @@ Designed for my thesis to support lecturers in rapidly creating consistent, well
     - Detects question boundaries
     - Estimates difficulty using **Bloom’s Taxonomy** verbs
   - Builds an exam **pattern profile** (difficulty distribution + style metadata)
-
 - **Pattern-aligned question generation**
   - RAG retrieval over uploaded lecture materials
   - Few-shot prompting with:
@@ -31,7 +29,6 @@ Designed for my thesis to support lecturers in rapidly creating consistent, well
   - Generates new questions **(MCQ-only)** with:
     - Difficulty + Bloom badges per question
     - Answers and explanations
-
 - **Quiz Practice Mode (web-based)**
   - From generation results/history: click **Start Quiz** to enter `/quiz/[genId]`
   - Full quiz UI: elapsed timer, next/prev, submit
@@ -40,15 +37,13 @@ Designed for my thesis to support lecturers in rapidly creating consistent, well
     - Show correct answer + your answer
   - Explanation + Bloom breakdown
   - Quiz attempts are persisted in SQLite for dashboard analytics
-  - Per-quiz confidence trend shows score progression for one selected generated quiz
-
+  - Confidence trend shows score progression across stored user attempts over time
 - **Grounding & hallucination detection**
   - Measures keyword overlap between each question and source chunks
   - Labels questions as:
     - Grounded (green)
     - Partial (yellow)
     - Weak (red)
-
 - **History, export, and usage tracking**
   - Full history of named generations (including provider + model + token usage)
   - Rename generated quizzes during review or later from History
@@ -98,7 +93,6 @@ Key AI/ML components:
   - SQLite (metadata + vector store)
   - PyMuPDF / docx / pptx processors
   - Global AI router over Groq/Gemini/Ollama with automatic fallback
-
 - **Frontend**
   - Next.js 16 + React 19 + shadcn/ui + Tailwind CSS 4
   - Main workflow: `Source -> Pattern -> Generate -> Review`
@@ -117,25 +111,19 @@ Key AI/ML components:
 ### 4.2. Setup
 
 1. Create `.env` in the `backend/` folder (see `backend/.env.example`):
-
-   ```env
+  ```env
    GEMINI_API_KEY=your_key_here
    JWT_SECRET=your-secret-at-least-32-chars
-   ```
-
+  ```
 2. Install dependencies (backend + frontend) as described in project docs (or thesis report).
-
 3. Start all services:
-
-   ```bat
+  ```bat
    start-all.bat
-   ```
-
-4. Open `http://localhost:3000`, **register** a user on `/login`, then use the app. All API routes except `/api/auth/*`, `/api/health`, and OpenAPI docs require a JWT.
-
+  ```
+4. Open `http://localhost:3000`, **register** a user on `/login`, then use the app. All API routes except `/api/auth/`*, `/api/health`, and OpenAPI docs require a JWT.
 5. Verify services:
-   - Backend Swagger: `http://localhost:8000/docs`
-   - Frontend UI: `http://localhost:3000`
+  - Backend Swagger: `http://localhost:8000/docs`
+  - Frontend UI: `http://localhost:3000`
 
 ### 4.3 Docker
 
@@ -152,46 +140,40 @@ Set `GEMINI_API_KEY` (and optional `GROQ_API_KEY`, `JWT_SECRET`) in your environ
 ## 5. Basic Usage Flow
 
 1. **Source**
-   - Upload or choose lecture `PDF/DOCX/PPTX`
-   - Wait for processing; document summary + chunk count will appear
-
+  - Upload or choose lecture `PDF/DOCX/PPTX`
+  - Wait for processing; document summary + chunk count will appear
 2. **Pattern**
-   - Select an optional exam pattern
-   - Choose question count, language, and difficulty distribution
-   - Manual difficulty uses a normalized colored slider with a reset action
-
+  - Select an optional exam pattern
+  - Choose question count, language, and difficulty distribution
+  - Manual difficulty uses a normalized colored slider with a reset action
 3. **Generate**
-   - Confirm the selected source/setup
-   - Run generation and move to review when complete
-
+  - Confirm the selected source/setup
+  - Run generation and move to review when complete
 4. **Review**
-   - Name the generated quiz, for example `Database Fundamentals - Demo Confidence Quiz`
-   - Inspect generated MCQs, answers, explanations, Bloom labels, and grounding evidence
-   - Click **Start Quiz** to practice the generated MCQs
-
+  - Name the generated quiz, for example `Database Fundamentals - Demo Confidence Quiz`
+  - Inspect generated MCQs, answers, explanations, Bloom labels, and grounding evidence
+  - Click **Start Quiz** to practice the generated MCQs
 5. **Practice & review (Quiz Practice Mode)**
-   - Do the quiz in `/quiz/[genId]`
-   - Submit to see score + Bloom breakdown
-   - Review mode shows per-question correctness + explanations
-
+  - Do the quiz in `/quiz/[genId]`
+  - Submit to see score + Bloom breakdown
+  - Review mode shows per-question correctness + explanations
 6. **Evaluate accuracy & history/export**
-   - Click **Evaluate Accuracy** to see grounding scores per question
-   - `History` tab: rename, open, evaluate, export, or start any completed generation
-
+  - Click **Evaluate Accuracy** to see grounding scores per question
+  - `History` tab: rename, open, evaluate, export, or start any completed generation
 7. **Monitor progress and fallback behavior**
-   - `Dashboard`: summary, attempt history, Bloom breakdown, and per-quiz confidence trend
-   - `Usage`: provider/model/call type/status filters and token accounting
-   - Filter by provider/model/call type/status
-   - Inspect fallback events and model usage distribution
+  - `Dashboard`: summary, attempt history, Bloom breakdown, and confidence trend
+  - `Usage`: provider/model/call type/status filters and token accounting
+  - Filter by provider/model/call type/status
+  - Inspect fallback events and model usage distribution
 
 ---
 
 ## 6. Roadmap (high level)
 
-This repo is organized by phases (see `doc/mcq_platform_roadmap.md`).
+This repo is organized by phases (see `doc/roadmap/mcq_platform_roadmap.md`).
 
 - **Phase 2:** MCQ Practice Mode (done: Generate -> Start Quiz -> Submit -> Review)
-- **Phase 3:** Quiz dashboard & analytics foundation (summary + attempt history + Bloom breakdown + per-quiz confidence trend)
+- **Phase 3:** Quiz dashboard & analytics foundation (summary + attempt history + Bloom breakdown + confidence trend)
 
 ---
 
@@ -209,32 +191,32 @@ If you are my advisor or reviewer, the detailed demo script is in `SHOWCASE.md`.
 
 1. Ensure backend dependencies are installed and environment variables are configured (`GEMINI_API_KEY` required).
 2. Review reproducible run settings in `eval/config.yaml`:
-   - `seed`, `top_k`, `chunk_size`, `chunk_overlap`
-   - `embedding_model`, `llm_model`, `llm_temperature`
-   - `prompt_version`
+  - `seed`, `top_k`, `chunk_size`, `chunk_overlap`
+  - `embedding_model`, `llm_model`, `llm_temperature`
+  - `prompt_version`
 3. Run the evaluation pipeline from repo root:
-
-   ```bash
+  ```bash
    set PYTHONPATH=backend && python eval/run_eval.py --config eval/config.yaml
-   ```
-
+  ```
 4. Check outputs:
-   - `eval/results/comparison.csv` (latest mean/std snapshot)
-   - `eval/results/runs.csv` (append-only mean/std run history)
-   - `eval/results/details.csv` (topic-level repeat details)
-   - `eval/results/failure_analysis.md` (thesis-ready failure table)
-   - `eval/results/history.md` (human-readable run log)
+  - `eval/results/comparison.csv` (latest mean/std snapshot)
+  - `eval/results/runs.csv` (append-only mean/std run history)
+  - `eval/results/details.csv` (topic-level repeat details)
+  - `eval/results/failure_analysis.md` (thesis-ready failure table)
+  - `eval/results/history.md` (human-readable run log)
 5. Each generation row now stores `config_snapshot` and `prompt_version` in SQLite for traceable reruns.
 
 ### Latest core evaluation snapshot
 
 The thesis-ready snapshot uses 10 EN/VI topics and 3 repeats for each core baseline:
 
-| Variant | Grounding mean +- std | Bloom KL mean +- std | Judge mean +- std |
-|---|---:|---:|---:|
-| Baseline vanilla | 0.7912 +- 0.0048 | 18.0286 +- 1.6853 | 3.7833 +- 0.0946 |
-| RAG only | 0.9369 +- 0.0030 | 11.6357 +- 0.9601 | 4.0000 +- 0.0000 |
-| Full system | 0.9334 +- 0.0021 | 3.9054 +- 0.7817 | 4.0750 +- 0.1521 |
+
+| Variant          | Grounding mean +- std | Bloom KL mean +- std | Judge mean +- std |
+| ---------------- | --------------------- | -------------------- | ----------------- |
+| Baseline vanilla | 0.7912 +- 0.0048      | 18.0286 +- 1.6853    | 3.7833 +- 0.0946  |
+| RAG only         | 0.9369 +- 0.0030      | 11.6357 +- 0.9601    | 4.0000 +- 0.0000  |
+| Full system      | 0.9334 +- 0.0021      | 3.9054 +- 0.7817     | 4.0750 +- 0.1521  |
+
 
 Model-comparison baselines are configured but should not be claimed in the thesis unless rerun separately.
 
@@ -243,18 +225,21 @@ Model-comparison baselines are configured but should not be claimed in the thesi
 ### Current level: **Feature-complete / thesis-demo ready after documentation and screenshot pass**
 
 The project is already beyond a basic prototype:
+
 - End-to-end product loop is complete (ingest → pattern extraction → generation → quiz practice → evaluation).
 - Reproducibility and evaluation pipeline are in place (`eval/config.yaml`, golden dataset, comparison baselines).
 - Production-safety mechanisms exist (global fallback, quota/error handling, per-user limits, structured errors).
 - Admin-facing evaluation dashboard and usage telemetry are implemented.
-- The WebApp includes a focused wizard workflow, named quizzes, history rename, and per-quiz confidence trend.
+- The WebApp includes a focused wizard workflow, named quizzes, history rename, and confidence trend analytics.
 
 ### Final submission window
 
 Submission is scheduled for **04/05/2026 to 08/05/2026 during office hours**. The project should be feature-frozen before this window. The final pass should focus on screenshots, report formatting, source packaging, and backup copies.
 
 Final thesis support docs:
+
 - `SHOWCASE.md`
 - `doc/thesis/evaluation_results.md`
 - `doc/thesis/submission_checklist.md`
 - `doc/screenshots/README.md`
+
