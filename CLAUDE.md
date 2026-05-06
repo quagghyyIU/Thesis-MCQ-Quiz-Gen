@@ -109,7 +109,49 @@ Bad questions (do NOT ask):
 
 ---
 
-## 7. Evaluation Data to Use
+## 7. Mandatory Project-Change Protocol
+
+For any request related to this thesis, codebase, evaluation data, screenshots,
+architecture, implementation, or report content, Claude MUST follow this rule
+before making changes:
+
+1. **Search/read the codebase first.**
+   - Use repository files as the source of truth.
+   - For implementation claims, inspect the relevant files under `backend/`,
+     `frontend/`, `eval/`, and `doc/`.
+   - For thesis claims, inspect `doc/thesis/thesis.tex` and the relevant
+     supporting files in `doc/thesis/`.
+
+2. **Do not invent data or facts.**
+   - Do not invent evaluation numbers, API behavior, features, citations,
+     screenshots, tests, limitations, or implementation details.
+   - If the information is not found in the repo or provided by the user,
+     say that it is unknown and ask for confirmation or source material.
+
+3. **Ask personalized questions before deeper edits.**
+   - Before making large, subjective, high-impact, or user-personalized
+     changes, ask concrete questions that help match the user's intent.
+   - Questions should be specific to the user's thesis, project, advisor
+     expectations, target page count, preferred emphasis, and available
+     evidence.
+   - Do not make broad rewrites, add new claims, or restructure chapters
+     without confirming the intended direction first.
+
+4. **Confirm change scope before editing.**
+   - Summarize the files/sections that will be changed and the reason for
+     each change.
+   - Keep edits scoped to the user's confirmed request.
+   - If new evidence is needed, ask for it instead of filling the gap with
+     plausible-sounding content.
+
+5. **Separate evidence from assumptions.**
+   - Mark any assumption explicitly.
+   - Prefer wording such as "the repository shows..." or "the available
+     evaluation file reports..." when making factual claims.
+
+---
+
+## 8. Evaluation Data to Use
 
 Always pull numbers from `doc/thesis/evaluation_results.md`, not from memory.
 
@@ -123,7 +165,7 @@ Always pull numbers from `doc/thesis/evaluation_results.md`, not from memory.
 
 ---
 
-## 8. What Claude Should Never Do
+## 9. What Claude Should Never Do
 
 - Do **not** invent evaluation numbers, citations, or system details
 - Do **not** write sections without asking the required pre-writing questions first
@@ -131,3 +173,5 @@ Always pull numbers from `doc/thesis/evaluation_results.md`, not from memory.
 - Do **not** add `\newpage` inside paragraphs or before subsections
 - Do **not** skip the Step 1 file reads even if the section seems simple
 - Do **not** write more than one section per turn without user confirmation
+- Do **not** make broad project or thesis changes without first searching the
+  codebase and confirming the change scope with the user
