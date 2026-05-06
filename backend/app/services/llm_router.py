@@ -11,6 +11,11 @@ from app.config import (
     GROQ_MODEL,
     OLLAMA_BASE,
     OLLAMA_MODEL,
+    OPENROUTER_API_KEY,
+    OPENROUTER_AUTO_FREE_MODELS,
+    OPENROUTER_EMBEDDING_MODEL,
+    OPENROUTER_FREE_MODELS,
+    OPENROUTER_MODEL,
     LLM_FALLBACK_CHAIN,
 )
 from app.database import get_db, now_iso
@@ -18,14 +23,31 @@ from app.errors import LLMQuotaError, LLMUnavailableError, is_quota_error
 
 GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
 GROQ_BASE = "https://api.groq.com/openai/v1"
+OPENROUTER_BASE = "https://openrouter.ai/api/v1"
 EMBED_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent"
 BATCH_EMBED_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:batchEmbedContents"
 
 _groq_key_idx = 0
+_openrouter_free_model_cache: tuple[float, list[str]] | None = None
 
 
 def get_chain() -> list[tuple[str, str]]:
     return list(LLM_FALLBACK_CHAIN)
+
+
+async def _expand_chain(chain: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    expanded: list[tuple[str, str]] = []
+    for provider, model in chain:
+        if provider == "openrouter" and model in {"openrouter/auto-free", "auto-free", "free"}:
+            if not OPENROUTER_API_KEY:
+                continue
+            try:
+                expanded.extend(("openrouter", free_model) for free_model in await _get_openrouter_free_models())
+            except Exception:
+                expanded.extend(("openrouter", free_model) for free_model in OPENROUTER_FREE_MODELS)
+            continue
+        expanded.append((provider, model))
+    return expanded
 
 
 def _log_attempt(
@@ -129,10 +151,109 @@ async def _call_ollama(system_prompt: str, user_prompt: str, model: str) -> tupl
     return text, tokens
 
 
+def _is_free_openrouter_model(model: dict) -> bool:
+    model_id = str(model.get("id", ""))
+    pricing = model.get("pricing") or {}
+    if model_id.endswith(":free"):
+        return True
+    try:
+        prompt = float(pricing.get("prompt", 1) or 0)
+        completion = float(pricing.get("completion", 1) or 0)
+        request = float(pricing.get("request", 0) or 0)
+    except (TypeError, ValueError):
+        return False
+    return prompt == 0 and completion == 0 and request == 0
+
+
+async def _get_openrouter_free_models() -> list[str]:
+    global _openrouter_free_model_cache
+    if not OPENROUTER_AUTO_FREE_MODELS:
+        return list(OPENROUTER_FREE_MODELS)
+    now = time.time()
+    if _openrouter_free_model_cache and now - _openrouter_free_model_cache[0] < 3600:
+        return list(_openrouter_free_model_cache[1])
+
+    headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}"}
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.get(f"{OPENROUTER_BASE}/models", headers=headers)
+        resp.raise_for_status()
+    data = resp.json()
+    discovered = [
+        model["id"]
+        for model in data.get("data", [])
+        if isinstance(model, dict) and model.get("id") and _is_free_openrouter_model(model)
+    ]
+    preferred = [model for model in OPENROUTER_FREE_MODELS if model in discovered]
+    fallback = preferred + [model for model in discovered if model not in preferred]
+    models = fallback or list(OPENROUTER_FREE_MODELS)
+    _openrouter_free_model_cache = (now, models)
+    return models
+
+
+async def _call_openrouter(system_prompt: str, user_prompt: str, model: str) -> tuple[str, int]:
+    if not OPENROUTER_API_KEY:
+        raise ValueError("No OpenRouter API key configured")
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        "temperature": 0.7,
+        "max_tokens": 4096,
+    }
+    headers = {
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    async with httpx.AsyncClient(timeout=180.0) as client:
+        resp = await client.post(f"{OPENROUTER_BASE}/chat/completions", headers=headers, json=payload)
+        resp.raise_for_status()
+    data = resp.json()
+    text = data["choices"][0]["message"]["content"]
+    usage = data.get("usage", {})
+    return text, usage.get("total_tokens", 0)
+
+
+async def _call_openrouter_embeddings(texts: list[str]) -> list[list[float]]:
+    if not OPENROUTER_API_KEY:
+        raise ValueError("No OpenRouter API key configured for embeddings")
+    headers = {
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        try:
+            payload = {
+                "model": OPENROUTER_EMBEDDING_MODEL,
+                "input": texts,
+            }
+            resp = await client.post(f"{OPENROUTER_BASE}/embeddings", headers=headers, json=payload)
+            resp.raise_for_status()
+            data = resp.json()
+            rows = sorted(data["data"], key=lambda item: item.get("index", 0))
+            return [row["embedding"] for row in rows]
+        except httpx.HTTPStatusError:
+            raise
+        except Exception:
+            all_embeddings: list[list[float]] = []
+            for text in texts:
+                payload = {
+                    "model": OPENROUTER_EMBEDDING_MODEL,
+                    "input": text,
+                }
+                resp = await client.post(f"{OPENROUTER_BASE}/embeddings", headers=headers, json=payload)
+                resp.raise_for_status()
+                data = resp.json()
+                all_embeddings.append(data["data"][0]["embedding"])
+            return all_embeddings
+
+
 PROVIDER_CALLS = {
     "gemini": _call_gemini,
     "groq": _call_groq,
     "ollama": _call_ollama,
+    "openrouter": _call_openrouter,
 }
 
 
@@ -154,6 +275,7 @@ async def call_llm(
         chain = [(force_provider, force_model or _default_model_for(force_provider))]
     else:
         chain = get_chain()
+    chain = await _expand_chain(chain)
 
     for attempt_idx, (provider, model) in enumerate(chain):
         if provider not in PROVIDER_CALLS:
@@ -161,6 +283,8 @@ async def call_llm(
         if provider == "gemini" and not GEMINI_API_KEY:
             continue
         if provider == "groq" and not (GROQ_API_KEYS or GROQ_API_KEY):
+            continue
+        if provider == "openrouter" and not OPENROUTER_API_KEY:
             continue
         started = time.perf_counter()
         try:
@@ -242,11 +366,28 @@ async def call_embeddings(
 ) -> list[list[float]]:
     if not texts:
         return []
-    if not GEMINI_API_KEY:
-        raise LLMUnavailableError("Gemini API key missing for embeddings")
+    if not GEMINI_API_KEY and not OPENROUTER_API_KEY:
+        raise LLMUnavailableError("No embedding provider configured")
 
     started = time.perf_counter()
     try:
+        if not GEMINI_API_KEY:
+            embeddings = await _call_openrouter_embeddings(texts)
+            latency_ms = int((time.perf_counter() - started) * 1000)
+            if db_log:
+                _log_attempt(
+                    user_id=user_id,
+                    call_type=call_type,
+                    provider="openrouter",
+                    model=OPENROUTER_EMBEDDING_MODEL,
+                    status="ok",
+                    attempt_idx=0,
+                    latency_ms=latency_ms,
+                    token_usage=0,
+                    error_msg=None,
+                )
+            return embeddings
+
         all_embeddings: list[list[float]] = []
         for i in range(0, len(texts), 100):
             batch = texts[i : i + 100]
@@ -269,8 +410,8 @@ async def call_embeddings(
             _log_attempt(
                 user_id=user_id,
                 call_type=call_type,
-                provider="gemini",
-                model="gemini-embedding-001",
+                provider="gemini" if GEMINI_API_KEY else "openrouter",
+                model="gemini-embedding-001" if GEMINI_API_KEY else OPENROUTER_EMBEDDING_MODEL,
                 status="ok",
                 attempt_idx=0,
                 latency_ms=latency_ms,
@@ -281,6 +422,26 @@ async def call_embeddings(
     except Exception as exc:
         msg = str(exc)
         status = "quota" if is_quota_error(msg) else "error"
+        if GEMINI_API_KEY and OPENROUTER_API_KEY:
+            try:
+                embeddings = await _call_openrouter_embeddings(texts)
+                latency_ms = int((time.perf_counter() - started) * 1000)
+                if db_log:
+                    _log_attempt(
+                        user_id=user_id,
+                        call_type=call_type,
+                        provider="openrouter",
+                        model=OPENROUTER_EMBEDDING_MODEL,
+                        status="ok",
+                        attempt_idx=1,
+                        latency_ms=latency_ms,
+                        token_usage=0,
+                        error_msg=None,
+                    )
+                return embeddings
+            except Exception as fallback_exc:
+                msg = f"{msg}; OpenRouter embedding fallback failed: {fallback_exc}"
+                status = "quota" if is_quota_error(msg) else "error"
         latency_ms = int((time.perf_counter() - started) * 1000)
         if db_log:
             _log_attempt(
@@ -306,4 +467,6 @@ def _default_model_for(provider: str) -> str:
         return GEMINI_MODEL
     if provider == "ollama":
         return OLLAMA_MODEL
+    if provider == "openrouter":
+        return OPENROUTER_MODEL
     return ""

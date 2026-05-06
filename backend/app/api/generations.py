@@ -98,7 +98,16 @@ async def create_generation(body: GenerateRequest, current_user: dict = Depends(
         raise HTTPException(500, f"Generation failed: {str(e)}")
 
     with get_db() as db:
-        row = db.execute("SELECT * FROM generations WHERE id = ?", (gen_id,)).fetchone()
+        row = db.execute(
+            """
+            SELECT g.*, COALESCE(NULLIF(d.original_filename, ''), d.filename) AS document_name,
+                   d.filename AS stored_document_name
+            FROM generations g
+            LEFT JOIN documents d ON d.id = g.document_id
+            WHERE g.id = ?
+            """,
+            (gen_id,),
+        ).fetchone()
     return row_to_dict(row, GEN_JSON_FIELDS)
 
 
@@ -107,7 +116,14 @@ def list_generations(current_user: dict = Depends(get_current_user)):
     uid = current_user["id"]
     with get_db() as db:
         rows = db.execute(
-            "SELECT * FROM generations WHERE user_id = ? ORDER BY created_at DESC",
+            """
+            SELECT g.*, COALESCE(NULLIF(d.original_filename, ''), d.filename) AS document_name,
+                   d.filename AS stored_document_name
+            FROM generations g
+            LEFT JOIN documents d ON d.id = g.document_id
+            WHERE g.user_id = ?
+            ORDER BY g.created_at DESC
+            """,
             (uid,),
         ).fetchall()
     return [row_to_dict(r, GEN_JSON_FIELDS) for r in rows]
@@ -118,7 +134,13 @@ def get_generation(gen_id: int, current_user: dict = Depends(get_current_user)):
     uid = current_user["id"]
     with get_db() as db:
         row = db.execute(
-            "SELECT * FROM generations WHERE id = ? AND user_id = ?",
+            """
+            SELECT g.*, COALESCE(NULLIF(d.original_filename, ''), d.filename) AS document_name,
+                   d.filename AS stored_document_name
+            FROM generations g
+            LEFT JOIN documents d ON d.id = g.document_id
+            WHERE g.id = ? AND g.user_id = ?
+            """,
             (gen_id, uid),
         ).fetchone()
     if not row:
@@ -145,7 +167,13 @@ def update_generation(gen_id: int, body: GenerationUpdate, current_user: dict = 
             (title, gen_id, uid),
         )
         updated = db.execute(
-            "SELECT * FROM generations WHERE id = ? AND user_id = ?",
+            """
+            SELECT g.*, COALESCE(NULLIF(d.original_filename, ''), d.filename) AS document_name,
+                   d.filename AS stored_document_name
+            FROM generations g
+            LEFT JOIN documents d ON d.id = g.document_id
+            WHERE g.id = ? AND g.user_id = ?
+            """,
             (gen_id, uid),
         ).fetchone()
     return row_to_dict(updated, GEN_JSON_FIELDS)

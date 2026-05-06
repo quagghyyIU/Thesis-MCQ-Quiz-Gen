@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS documents (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER,
     filename TEXT NOT NULL,
+    original_filename TEXT NOT NULL DEFAULT '',
     file_type TEXT NOT NULL,
     raw_text TEXT NOT NULL DEFAULT '',
     processed_chunks TEXT NOT NULL DEFAULT '[]',
@@ -214,6 +215,11 @@ def _migrate_db(db):
         db.execute("SELECT error_msg FROM api_calls LIMIT 1")
     except sqlite3.OperationalError:
         db.execute("ALTER TABLE api_calls ADD COLUMN error_msg TEXT")
+
+    try:
+        db.execute("SELECT original_filename FROM documents LIMIT 1")
+    except sqlite3.OperationalError:
+        db.execute("ALTER TABLE documents ADD COLUMN original_filename TEXT NOT NULL DEFAULT ''")
 
     db.execute("CREATE INDEX IF NOT EXISTS idx_api_calls_user_created_at ON api_calls(user_id, created_at)")
 

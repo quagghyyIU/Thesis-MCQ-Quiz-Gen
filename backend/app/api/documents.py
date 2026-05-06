@@ -42,8 +42,9 @@ async def upload_document(
         raise HTTPException(400, f"File too large ({size_mb:.1f}MB). Max is {MAX_UPLOAD_SIZE_MB}MB.")
 
     file_type = ALLOWED_TYPES[file.content_type]
+    original_filename = file.filename or "upload"
     os.makedirs(UPLOAD_DIR, exist_ok=True)
-    stored_filename = _safe_upload_filename(file.filename or "upload", file_type)
+    stored_filename = _safe_upload_filename(original_filename, file_type)
     file_path = os.path.join(UPLOAD_DIR, stored_filename)
     with open(file_path, "wb") as f:
         f.write(contents)
@@ -67,8 +68,8 @@ async def upload_document(
     uid = current_user["id"]
     with get_db() as db:
         cursor = db.execute(
-            "INSERT INTO documents (user_id, filename, file_type, raw_text, processed_chunks, language, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (uid, stored_filename, file_type, raw_text, json.dumps(chunks), language, now_iso()),
+            "INSERT INTO documents (user_id, filename, original_filename, file_type, raw_text, processed_chunks, language, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (uid, stored_filename, original_filename, file_type, raw_text, json.dumps(chunks), language, now_iso()),
         )
         doc_id = cursor.lastrowid
 

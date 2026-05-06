@@ -13,6 +13,30 @@ GROQ_API_KEYS = [
     if k.strip()
 ]
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openrouter/auto-free")
+OPENROUTER_EMBEDDING_MODEL = os.getenv("OPENROUTER_EMBEDDING_MODEL", "nvidia/llama-nemotron-embed-vl-1b-v2:free")
+OPENROUTER_AUTO_FREE_MODELS = os.getenv("OPENROUTER_AUTO_FREE_MODELS", "true").lower() in {"1", "true", "yes", "on"}
+DEFAULT_OPENROUTER_FREE_MODELS = ",".join(
+    [
+        "openrouter/owl-alpha",
+        "minimax/minimax-m2.5:free",
+        "nvidia/nemotron-3-nano-30b-a3b:free",
+        "openai/gpt-oss-20b:free",
+        "poolside/laguna-xs-2:free",
+        "google/gemma-4-31b-it:free",
+        "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+        "nvidia/nemotron-nano-12b-v2-vl:free",
+        "nvidia/nemotron-nano-9b-v2:free",
+        "google/gemma-4-26b-a4b-it:free",
+        "tencent/hy3-preview:free",
+    ]
+)
+OPENROUTER_FREE_MODELS = [
+    model.strip()
+    for model in os.getenv("OPENROUTER_FREE_MODELS", DEFAULT_OPENROUTER_FREE_MODELS).split(",")
+    if model.strip()
+]
 DEFAULT_LLM_FALLBACK_CHAIN = ",".join(
     [
         "groq:llama-3.3-70b-versatile",
@@ -20,7 +44,7 @@ DEFAULT_LLM_FALLBACK_CHAIN = ",".join(
         "groq:openai/gpt-oss-120b",
         "groq:qwen/qwen3-32b",
         "groq:llama-3.1-8b-instant",
-        "gemini:gemini-2.5-flash",
+        "openrouter:openrouter/auto-free",
         "ollama:gemma4:e4b-it-q4_K_M",
     ]
 )

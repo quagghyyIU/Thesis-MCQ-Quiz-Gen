@@ -15,6 +15,7 @@ from app.api.usage import router as usage_router
 from app.api.quiz import router as quiz_router
 from app.api.dashboard import router as dashboard_router
 from app.api.eval import router as eval_router
+from app.api.settings import router as settings_router
 
 app = FastAPI(title="QuizGen API", version="1.0.0")
 
@@ -46,6 +47,7 @@ app.include_router(usage_router, prefix="/api/usage", tags=["Usage"])
 app.include_router(quiz_router, prefix="/api/quiz", tags=["Quiz"])
 app.include_router(dashboard_router, prefix="/api/dashboard", tags=["Dashboard"])
 app.include_router(eval_router, prefix="/api/eval", tags=["Eval"])
+app.include_router(settings_router, prefix="/api/settings", tags=["Settings"])
 
 
 @app.on_event("startup")

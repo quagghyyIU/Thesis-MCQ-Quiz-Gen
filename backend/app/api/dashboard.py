@@ -1,7 +1,8 @@
 from collections import defaultdict
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from app.api.auth import get_current_user
 from app.api.quiz import _is_mcq_correct, _time_taken_seconds
 from app.database import get_db, row_to_dict
 
@@ -12,9 +13,13 @@ GEN_JSON_FIELDS = ["questions"]
 
 
 @router.get("/summary")
-def dashboard_summary():
+def dashboard_summary(current_user: dict = Depends(get_current_user)):
+    uid = current_user["id"]
     with get_db() as db:
-        rows = db.execute("SELECT * FROM quiz_attempts ORDER BY created_at DESC").fetchall()
+        rows = db.execute(
+            "SELECT * FROM quiz_attempts WHERE user_id = ? ORDER BY created_at DESC",
+            (uid,),
+        ).fetchall()
 
     attempts = [row_to_dict(row, ATTEMPT_JSON_FIELDS) for row in rows]
     total_attempts = len(attempts)
@@ -33,17 +38,21 @@ def dashboard_summary():
 
 
 @router.get("/trend")
-def dashboard_trend():
+def dashboard_trend(current_user: dict = Depends(get_current_user)):
+    uid = current_user["id"]
     with get_db() as db:
         rows = db.execute(
             """
-            SELECT qa.*, g.document_id, d.filename AS document_name
+            SELECT qa.*, g.document_id, d.filename AS stored_document_name,
+                   COALESCE(NULLIF(d.original_filename, ''), d.filename) AS document_name
             , g.title AS generation_title
             FROM quiz_attempts qa
             LEFT JOIN generations g ON g.id = qa.generation_id
             LEFT JOIN documents d ON d.id = g.document_id
+            WHERE qa.user_id = ?
             ORDER BY qa.created_at ASC
-            """
+            """,
+            (uid,),
         ).fetchall()
 
     trend = []
@@ -65,11 +74,15 @@ def dashboard_trend():
 
 
 @router.get("/bloom-stats")
-def dashboard_bloom_stats():
+def dashboard_bloom_stats(current_user: dict = Depends(get_current_user)):
+    uid = current_user["id"]
     stats: dict[str, dict[str, int]] = defaultdict(lambda: {"correct": 0, "total": 0})
 
     with get_db() as db:
-        attempt_rows = db.execute("SELECT * FROM quiz_attempts ORDER BY created_at DESC").fetchall()
+        attempt_rows = db.execute(
+            "SELECT * FROM quiz_attempts WHERE user_id = ? ORDER BY created_at DESC",
+            (uid,),
+        ).fetchall()
         attempts = [row_to_dict(row, ATTEMPT_JSON_FIELDS) for row in attempt_rows]
 
         generation_cache = {}
