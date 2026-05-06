@@ -36,6 +36,9 @@ const WORKFLOW_STEPS = [
 ] as const;
 
 type WorkflowStep = (typeof WORKFLOW_STEPS)[number]["id"];
+type PatternSourceMode = "text" | "file";
+
+const PATTERN_ACCEPT_EXTS = ".pdf,.docx,.pptx";
 
 interface EvaluationResult {
   overall_score: number;
@@ -70,6 +73,8 @@ export function WorkflowHub({ onDataChanged }: { onDataChanged?: () => void }) {
   const [patternName, setPatternName] = useState("");
   const [patternDescription, setPatternDescription] = useState("");
   const [patternRawText, setPatternRawText] = useState("");
+  const [patternSource, setPatternSource] = useState<PatternSourceMode>("text");
+  const [patternFile, setPatternFile] = useState<File | null>(null);
   const [creatingPattern, setCreatingPattern] = useState(false);
 
   const diffTotal = diffDistribution.easy + diffDistribution.medium + diffDistribution.hard;
@@ -121,21 +126,34 @@ export function WorkflowHub({ onDataChanged }: { onDataChanged?: () => void }) {
     }
   };
 
+  const resetPatternForm = () => {
+    setPatternName("");
+    setPatternDescription("");
+    setPatternRawText("");
+    setPatternSource("text");
+    setPatternFile(null);
+  };
+
+  const handlePatternOpenChange = (open: boolean) => {
+    setPatternOpen(open);
+    if (!open) resetPatternForm();
+  };
+
   const handleCreatePattern = async () => {
     if (!patternName.trim()) return toast.error("Pattern name is required");
-    if (!patternRawText.trim()) return toast.error("Paste exam content first");
+    if (patternSource === "text" && !patternRawText.trim()) return toast.error("Paste exam content first");
+    if (patternSource === "file" && !patternFile) return toast.error("Select a pattern file first");
     setCreatingPattern(true);
     try {
       const pattern = await api.createPattern({
         name: patternName,
         description: patternDescription,
-        raw_text: patternRawText,
+        raw_text: patternSource === "text" ? patternRawText : undefined,
+        file: patternSource === "file" ? patternFile ?? undefined : undefined,
       });
       toast.success(`Pattern created - ${pattern.sample_questions.length} questions extracted`);
       setPatternOpen(false);
-      setPatternName("");
-      setPatternDescription("");
-      setPatternRawText("");
+      resetPatternForm();
       await loadData();
       setSelectedPattern(String(pattern.id));
       onDataChanged?.();
@@ -376,13 +394,17 @@ export function WorkflowHub({ onDataChanged }: { onDataChanged?: () => void }) {
                         <Label>Exam Pattern</Label>
                         <CreatePatternDialog
                           open={patternOpen}
-                          setOpen={setPatternOpen}
+                          setOpen={handlePatternOpenChange}
                           name={patternName}
                           setName={setPatternName}
                           description={patternDescription}
                           setDescription={setPatternDescription}
                           rawText={patternRawText}
                           setRawText={setPatternRawText}
+                          source={patternSource}
+                          setSource={setPatternSource}
+                          file={patternFile}
+                          setFile={setPatternFile}
                           creating={creatingPattern}
                           onCreate={handleCreatePattern}
                         />
@@ -712,6 +734,10 @@ function CreatePatternDialog({
   setDescription,
   rawText,
   setRawText,
+  source,
+  setSource,
+  file,
+  setFile,
   creating,
   onCreate,
 }: {
@@ -723,6 +749,10 @@ function CreatePatternDialog({
   setDescription: (value: string) => void;
   rawText: string;
   setRawText: (value: string) => void;
+  source: PatternSourceMode;
+  setSource: (value: PatternSourceMode) => void;
+  file: File | null;
+  setFile: (value: File | null) => void;
   creating: boolean;
   onCreate: () => void;
 }) {
@@ -745,15 +775,57 @@ function CreatePatternDialog({
             </div>
           </div>
           <div className="space-y-2">
-            <Label>Exam Content</Label>
-            <Textarea
-              value={rawText}
-              onChange={(event) => setRawText(event.target.value)}
-              rows={14}
-              placeholder="Paste the full exam paper here."
-            />
-            <p className="text-xs text-muted-foreground">{rawText.length.toLocaleString()} characters</p>
+            <Label>Source</Label>
+            <div className="inline-flex rounded-md border p-1">
+              <Button
+                type="button"
+                size="sm"
+                variant={source === "text" ? "default" : "ghost"}
+                onClick={() => setSource("text")}
+              >
+                Paste text
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={source === "file" ? "default" : "ghost"}
+                onClick={() => setSource("file")}
+              >
+                Upload file
+              </Button>
+            </div>
           </div>
+          {source === "text" ? (
+            <div className="space-y-2">
+              <Label>Exam Content</Label>
+              <Textarea
+                value={rawText}
+                onChange={(event) => setRawText(event.target.value)}
+                rows={14}
+                placeholder="Paste the full exam paper here."
+              />
+              <p className="text-xs text-muted-foreground">{rawText.length.toLocaleString()} characters</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Label>Pattern File</Label>
+              <Input
+                type="file"
+                accept={PATTERN_ACCEPT_EXTS}
+                onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+              />
+              <p className="text-xs text-muted-foreground">
+                {file
+                  ? `${file.name} - ${(file.size / 1024 / 1024).toFixed(2)} MB`
+                  : "Upload a PDF, DOCX, or PPTX exam paper."}
+              </p>
+            </div>
+          )}
+          {source === "file" && rawText.trim() ? (
+            <p className="rounded-md border bg-muted/40 p-2 text-xs text-muted-foreground">
+              Existing pasted text will be ignored while upload file is selected.
+            </p>
+          ) : null}
           <Button onClick={onCreate} disabled={creating} className="w-full">
             {creating ? "Extracting pattern..." : "Create Pattern"}
           </Button>

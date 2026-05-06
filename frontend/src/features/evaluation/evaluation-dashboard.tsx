@@ -58,14 +58,14 @@ export function EvaluationDashboard() {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base">Current setup</CardTitle>
+            <CardTitle className="text-lg">Current setup</CardTitle>
             <Button variant="outline" size="sm" onClick={load} disabled={loading}>
               <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
               Refresh
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="flex flex-wrap gap-2 text-sm">
+        <CardContent className="flex flex-wrap gap-2 text-base">
           {defaults.llm_model && (
             <Badge variant="secondary">LLM: {defaults.llm_model}</Badge>
           )}

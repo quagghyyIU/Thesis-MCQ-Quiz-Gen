@@ -48,6 +48,40 @@
 }
 
 :root {
+  /* Atelier design tokens */
+  --at-bg: #f7f4ee;
+  --at-surface: #ffffff;
+  --at-surface-muted: #f1ece2;
+  --at-surface-sunken: #ebe5d7;
+  --at-border: #e3dccb;
+  --at-border-strong: #cdc4ad;
+  --at-text: #1f1d1a;
+  --at-text-muted: #6b6558;
+  --at-text-faint: #94907f;
+  --at-accent: #8a78b8;
+  --at-accent-soft: #ece7f5;
+  --at-accent-ink: #4a3d75;
+  --at-accent-contrast: #ffffff;
+  --at-warm: #c96442;
+  --at-success: #2f7a4f;
+  --at-warning: #b0791d;
+  --at-danger: #b54545;
+  --at-danger-bg: #fde8e8;
+  --at-danger-border: #f4c4c4;
+  --at-radius: 14px;
+  --at-radius-sm: 10px;
+  --at-radius-lg: 20px;
+  /* Matches frontend-atelier/tokens.jsx ATELIER.shadow */
+  --at-shadow: 0 1px 0 rgba(40, 30, 15, 0.04), 0 1px 2px rgba(40, 30, 15, 0.04);
+  --at-shadow-lg: 0 12px 32px -16px rgba(40, 30, 15, 0.18);
+
+  /* Shell layout (aligned with frontend-atelier/shells.jsx spacing; widen sidebar vs 260px prototype) */
+  --at-sidebar-width: 288px;
+  --at-sidebar-pad-x: 14px;
+  --at-sidebar-pad-y: 18px;
+  --at-sidebar-gap: 12px;
+  --at-sidebar-section-after-nav: 22px;
+
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -83,6 +117,21 @@
 }
 
 .dark {
+  /* Atelier dark overrides */
+  --at-bg: #1a1815;
+  --at-surface: #252320;
+  --at-surface-muted: #2c2a26;
+  --at-surface-sunken: #36332e;
+  --at-border: #3a3631;
+  --at-border-strong: #4a463f;
+  --at-text: #f5f1e8;
+  --at-text-muted: #a8a195;
+  --at-text-faint: #7a7568;
+  --at-accent-soft: #8a78b826;
+  --at-accent-ink: #ece7f5;
+  --at-danger-bg: #3a1f1f;
+  --at-danger-border: #5a2a2a;
+
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
@@ -123,8 +172,146 @@
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    font-size: 15px;
+    font-size: 16px;
     line-height: 1.55;
+    overflow-x: clip;
+  }
+}
+
+/* Native selects aligned with Atelier tokens; color-scheme nudges OS dropdown toward light/dark */
+select.at-select {
+  font-family: inherit;
+  background-color: var(--at-surface);
+  color: var(--at-text);
+  border: 1px solid var(--at-border);
+  border-radius: var(--at-radius-sm);
+  accent-color: var(--at-accent);
+}
+.dark select.at-select {
+  color-scheme: dark;
+}
+html:not(.dark) select.at-select {
+  color-scheme: light;
+}
+select.at-select option {
+  background-color: var(--at-surface);
+  color: var(--at-text);
+}
+
+/* Shadcn PatternManager under Settings — match Atelier surfaces (cards use data-slot) */
+.atelier-shadcn-embed [data-slot="card"] {
+  background-color: var(--at-surface) !important;
+  color: var(--at-text);
+  box-shadow: var(--at-shadow);
+  --tw-ring-color: color-mix(in oklab, var(--at-border) 75%, transparent);
+}
+.atelier-shadcn-embed [data-slot="card-title"] {
+  font-family: var(--font-source-serif), Georgia, serif;
+  color: var(--at-text);
+}
+.atelier-shadcn-embed [data-slot="card-description"] {
+  color: var(--at-text-muted);
+}
+.atelier-shadcn-embed [data-slot="card-header"] {
+  border-color: var(--at-border);
+}
+
+@keyframes at-workflow-step-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.at-page-frame {
+  width: 100%;
+  max-width: 1100px;
+  min-width: 0;
+  margin-inline: auto;
+}
+
+.at-page-frame-narrow {
+  width: 100%;
+  max-width: 820px;
+  min-width: 0;
+  margin-inline: auto;
+}
+
+.at-route-panel {
+  width: 100%;
+  animation: at-route-panel-in 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes at-route-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.995);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+.at-workflow-step {
+  animation: at-workflow-step-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.at-bouncy-press {
+  transition:
+    transform 0.22s cubic-bezier(0.34, 1.45, 0.64, 1),
+    box-shadow 0.2s ease,
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.at-bouncy-press:hover:not(:disabled) {
+  box-shadow: var(--at-shadow);
+}
+
+.at-bouncy-press:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+@keyframes at-chart-tooltip-in {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.at-chart-tooltip-inner {
+  transform-origin: bottom center;
+  animation: at-chart-tooltip-in 0.34s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+.atelier-main-scroll {
+  scrollbar-gutter: stable both-edges;
+}
+
+@media (max-width: 900px) {
+  .atelier-main-scroll {
+    padding-inline: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .at-route-panel,
+  .at-workflow-step,
+  .at-bouncy-press {
+    animation: none !important;
+    transition: none !important;
   }
 }
 

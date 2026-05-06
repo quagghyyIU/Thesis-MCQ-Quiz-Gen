@@ -27,12 +27,6 @@ interface CallBreakdown {
   tokens: number;
 }
 
-interface ProviderBreakdown {
-  provider: string;
-  count: number;
-  tokens: number;
-}
-
 interface ModelBreakdown {
   provider: string;
   model: string;

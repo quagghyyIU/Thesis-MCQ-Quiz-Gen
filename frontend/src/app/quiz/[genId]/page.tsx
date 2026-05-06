@@ -1,73 +1,34 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
-
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { LoadingSpinner } from "@/components/loading-spinner";
+import { ArrowLeft, ArrowRight, Check, X } from "lucide-react";
+import { Pill } from "@/components/ui/pill";
+import { AtelierShell } from "@/components/atelier-shell";
 import { ProtectedApp } from "@/components/protected-app";
-import { api, GenerationItem, QuestionItem, QuizSubmitResponse } from "@/lib/api";
+import { api, GenerationItem, QuizSubmitResponse } from "@/lib/api";
 
 const BLOOM_LABELS: Record<string, string> = {
-  remember: "Remember",
-  understand: "Understand",
-  apply: "Apply",
-  analyze: "Analyze",
-  evaluate: "Evaluate",
-  create: "Create",
+  remember: "Remember", understand: "Understand", apply: "Apply",
+  analyze: "Analyze", evaluate: "Evaluate", create: "Create",
 };
 
-function formatTime(seconds: number): string {
-  const min = Math.floor(seconds / 60);
-  const sec = seconds % 60;
-  return `${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+function formatTime(s: number) {
+  const m = Math.floor(s / 60), sec = s % 60;
+  return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
 }
 
-function toChoiceLetter(value: string): string {
-  const trimmed = value.trim();
-  if (!trimmed) return "";
-  const first = trimmed.charAt(0).toUpperCase();
-  if (["A", "B", "C", "D"].includes(first)) return first;
-  return trimmed;
+function toChoiceLetter(value: string) {
+  const t = value.trim();
+  if (!t) return "";
+  const f = t.charAt(0).toUpperCase();
+  return ["A", "B", "C", "D"].includes(f) ? f : t;
 }
 
-function QuizTopActions({
-  generationId,
-  title,
-  shouldConfirmLeave = false,
-}: {
-  generationId: number;
-  title?: string;
-  shouldConfirmLeave?: boolean;
-}) {
-  return (
-    <div className="sticky top-0 z-20 -mx-2 mb-4 px-2 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/70">
-      <div className="flex items-center justify-between rounded-lg border bg-card/90 px-3 py-2">
-        <p className="truncate text-xs text-muted-foreground">{title || `Generation #${generationId}`}</p>
-        <div className="flex gap-2">
-          <Link
-            href="/"
-            onClick={(event) => {
-              if (shouldConfirmLeave && !window.confirm("Leave this quiz? Your current answers will not be submitted.")) {
-                event.preventDefault();
-              }
-            }}
-          >
-            <Button variant="outline" size="sm">Back to Home</Button>
-          </Link>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function QuizPageContent() {
+function QuizContent() {
   const params = useParams<{ genId: string }>();
+  const router = useRouter();
   const generationId = Number(params.genId);
 
   const [loading, setLoading] = useState(true);
@@ -75,342 +36,257 @@ function QuizPageContent() {
   const [generation, setGeneration] = useState<GenerationItem | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [sessionStarted, setSessionStarted] = useState(false);
-  const [startedAt, setStartedAt] = useState<string>("");
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const [submitResult, setSubmitResult] = useState<QuizSubmitResponse | null>(null);
+  const [started, setStarted] = useState(false);
+  const [startedAt, setStartedAt] = useState("");
+  const [elapsed, setElapsed] = useState(0);
+  const [result, setResult] = useState<QuizSubmitResponse | null>(null);
 
   useEffect(() => {
-    if (!generationId || Number.isNaN(generationId)) {
-      toast.error("Invalid generation id");
-      setLoading(false);
-      return;
-    }
-
-    const loadGeneration = async () => {
-      try {
-        const gen = await api.getGeneration(generationId);
-        setGeneration(gen);
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Failed to load generation");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadGeneration();
+    if (!generationId || isNaN(generationId)) { setLoading(false); return; }
+    api.getGeneration(generationId).then(setGeneration).catch((e) => toast.error(e.message)).finally(() => setLoading(false));
   }, [generationId]);
 
   useEffect(() => {
-    if (!startedAt || submitResult || !sessionStarted) return;
-    const startedTs = new Date(startedAt).getTime();
-    const timer = setInterval(() => {
-      const now = Date.now();
-      const seconds = Math.max(0, Math.floor((now - startedTs) / 1000));
-      setElapsedSeconds(seconds);
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [startedAt, submitResult, sessionStarted]);
+    if (!startedAt || result || !started) return;
+    const ts = new Date(startedAt).getTime();
+    const t = setInterval(() => setElapsed(Math.floor((Date.now() - ts) / 1000)), 1000);
+    return () => clearInterval(t);
+  }, [startedAt, result, started]);
 
-  const handleStartQuiz = () => {
-    setStartedAt(new Date().toISOString());
-    setSessionStarted(true);
-    setElapsedSeconds(0);
-  };
-
-  const handleRetryQuiz = () => {
-    setSubmitResult(null);
-    setAnswers({});
-    setCurrentIndex(0);
-    setSessionStarted(false);
-    setStartedAt("");
-    setElapsedSeconds(0);
-  };
-
-  useEffect(() => {
-    if (!startedAt || submitResult) return;
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (Object.keys(answers).length === 0) return;
-      event.preventDefault();
-      event.returnValue = "";
-    };
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [answers, startedAt, submitResult]);
-
-  const mcqQuestions = useMemo(() => {
-    if (!generation) return [];
-    return generation.questions.filter((question) => question.type === "mcq");
-  }, [generation]);
-
-  const currentQuestion = mcqQuestions[currentIndex];
+  const mcqs = useMemo(() => generation?.questions.filter((q) => q.type === "mcq") ?? [], [generation]);
+  const curQ = mcqs[currentIndex];
 
   const bloomBreakdown = useMemo(() => {
-    if (!submitResult || !mcqQuestions.length) return [];
+    if (!result) return [];
     const stats: Record<string, { label: string; correct: number; total: number }> = {};
-
-    for (const result of submitResult.results) {
-      const level = result.bloom_level || "unknown";
-      const label = BLOOM_LABELS[level] || "Unknown";
-      if (!stats[level]) stats[level] = { label, correct: 0, total: 0 };
-      stats[level].total += 1;
-      if (result.correct) stats[level].correct += 1;
+    for (const r of result.results) {
+      const lv = r.bloom_level || "unknown";
+      if (!stats[lv]) stats[lv] = { label: BLOOM_LABELS[lv] || lv, correct: 0, total: 0 };
+      stats[lv].total++;
+      if (r.correct) stats[lv].correct++;
     }
-
     return Object.values(stats);
-  }, [submitResult, mcqQuestions.length]);
-
-  const handlePickAnswer = (question: QuestionItem, option: string) => {
-    setAnswers((prev) => ({
-      ...prev,
-      [String(question.id)]: toChoiceLetter(option),
-    }));
-  };
+  }, [result]);
 
   const handleSubmit = async () => {
     if (!generation) return;
     setSubmitting(true);
     try {
-      const result = await api.submitQuizAttempt({
-        generation_id: generation.id,
-        answers,
-        time_started: startedAt || new Date().toISOString(),
-      });
-      setSubmitResult(result);
-      toast.success("Quiz submitted");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Submit failed");
+      const res = await api.submitQuizAttempt({ generation_id: generation.id, answers, time_started: startedAt || new Date().toISOString() });
+      setResult(res);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Submit failed");
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner className="h-8 w-8" />
+  if (loading) return (
+    <div className="flex items-center justify-center" style={{ minHeight: 400, color: "var(--at-text-faint)" }}>Loading…</div>
+  );
+
+  if (!generation || !mcqs.length) return (
+    <div className="text-center py-16">
+      <div className="text-[15px] mb-3" style={{ color: "var(--at-text-faint)" }}>This generation has no MCQ questions.</div>
+      <button onClick={() => router.push("/history")} className="text-[14px]" style={{ color: "var(--at-accent)" }}>Back to history</button>
+    </div>
+  );
+
+  // Start screen
+  if (!started) return (
+    <div className="at-page-frame-narrow" style={{ maxWidth: 600 }}>
+      <div className="p-8 rounded-[var(--at-radius)] text-center" style={{ background: "var(--at-surface)", border: "1px solid var(--at-border)" }}>
+        <h1 className="text-[1.625rem] font-medium mb-2" style={{ fontFamily: "var(--font-source-serif)", color: "var(--at-text)" }}>
+          {generation.title || `Quiz #${generation.id}`}
+        </h1>
+        <p className="text-[14px] mb-6" style={{ color: "var(--at-text-muted)" }}>
+          {mcqs.length} questions · Timer starts when you begin
+        </p>
+        <button
+          onClick={() => { setStartedAt(new Date().toISOString()); setStarted(true); setElapsed(0); }}
+          className="px-8 py-2.5 rounded-[var(--at-radius-sm)] text-[15px] font-medium"
+          style={{ background: "var(--at-accent)", color: "var(--at-accent-contrast)" }}
+        >
+          Start quiz
+        </button>
       </div>
-    );
-  }
+    </div>
+  );
 
-  if (!generation || !mcqQuestions.length) {
-    return (
-      <div className="mx-auto max-w-4xl px-6 py-10">
-        {generation ? <QuizTopActions generationId={generation.id} title={generation.title} /> : null}
-        <Card>
-          <CardHeader>
-            <CardTitle>Quiz unavailable</CardTitle>
-            <CardDescription>This generation has no MCQ questions to practice.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link href="/">
-              <Button>Back to Generate</Button>
-            </Link>
-          </CardContent>
-        </Card>
+  // Results screen
+  if (result) return (
+    <div className="at-page-frame-narrow" style={{ maxWidth: 760 }}>
+      <div className="mb-5">
+        <h1 className="text-[1.625rem] font-medium mb-1" style={{ fontFamily: "var(--font-source-serif)", color: "var(--at-text)" }}>Quiz results</h1>
+        <p className="text-[14px]" style={{ color: "var(--at-text-muted)" }}>{generation.title}</p>
       </div>
-    );
-  }
 
-  if (submitResult) {
-    return (
-      <div className="mx-auto max-w-5xl px-6 py-8 space-y-6">
-        <QuizTopActions generationId={generation.id} title={generation.title} />
-        <Card className="transition-all duration-200 hover:shadow-md">
-          <CardHeader>
-            <CardTitle>Score Summary</CardTitle>
-            <CardDescription>{generation.title || `Generation #${generation.id}`}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-3 md:grid-cols-4">
-              <div className="rounded-lg border p-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm">
-                <p className="text-xs text-muted-foreground">Score</p>
-                <p className="text-2xl font-semibold">{submitResult.score}%</p>
-              </div>
-              <div className="rounded-lg border p-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm">
-                <p className="text-xs text-muted-foreground">Correct</p>
-                <p className="text-2xl font-semibold">{submitResult.correct_count}/{submitResult.total_questions}</p>
-              </div>
-              <div className="rounded-lg border p-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm">
-                <p className="text-xs text-muted-foreground">Time Taken</p>
-                <p className="text-2xl font-semibold">{formatTime(submitResult.time_taken_seconds)}</p>
-              </div>
-              <div className="rounded-lg border p-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm">
-                <p className="text-xs text-muted-foreground">Attempt ID</p>
-                <p className="text-2xl font-semibold">#{submitResult.attempt_id}</p>
-              </div>
-            </div>
+      <div className="grid min-w-0 grid-cols-1 gap-3 mb-4 sm:grid-cols-2 xl:grid-cols-4">
+        {[
+          { label: "Score", value: `${result.score}%` },
+          { label: "Correct", value: `${result.correct_count}/${result.total_questions}` },
+          { label: "Time", value: formatTime(result.time_taken_seconds) },
+          { label: "Attempt #", value: String(result.attempt_id) },
+        ].map((k) => (
+          <div key={k.label} className="p-4 rounded-[var(--at-radius)]" style={{ background: "var(--at-surface)", border: "1px solid var(--at-border)" }}>
+            <div className="text-[12px] font-medium uppercase tracking-wider mb-1.5" style={{ color: "var(--at-text-faint)" }}>{k.label}</div>
+            <div className="text-[1.725rem] font-semibold" style={{ color: "var(--at-text)" }}>{k.value}</div>
+          </div>
+        ))}
+      </div>
 
-            <div className="space-y-2">
-              <p className="text-sm font-medium">Bloom Breakdown</p>
-              <div className="flex flex-wrap gap-2">
-                {bloomBreakdown.map((item) => (
-                  <Badge key={item.label} variant="outline">
-                    {item.label}: {item.correct}/{item.total}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {bloomBreakdown.length > 0 && (
+        <div className="flex gap-1.5 flex-wrap mb-4">
+          {bloomBreakdown.map((b) => (
+            <Pill key={b.label} tone="muted">{b.label}: {b.correct}/{b.total}</Pill>
+          ))}
+        </div>
+      )}
 
-        <Card className="transition-all duration-200 hover:shadow-md">
-          <CardHeader>
-            <CardTitle>Review Mode</CardTitle>
-            <CardDescription>See correct vs incorrect answers for each question.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {mcqQuestions.map((question, index) => {
-              const result = submitResult.results.find((row) => row.q_id === question.id);
-              if (!result) return null;
-              return (
-                <div
-                  key={question.id}
-                  className={`rounded-lg border p-4 space-y-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm ${
-                    result.correct
-                      ? "border-emerald-300 bg-emerald-50/60 dark:border-emerald-800 dark:bg-emerald-950/35"
-                      : "border-red-300 bg-red-50/60 dark:border-red-800 dark:bg-red-950/35"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="font-medium">
-                      <span className="text-muted-foreground mr-2">Q{index + 1}.</span>
-                      {question.question}
-                    </p>
-                    <Badge variant="outline">{BLOOM_LABELS[question.bloom_level] || question.bloom_level}</Badge>
+      <div className="space-y-3 mb-6">
+        {mcqs.map((q, i) => {
+          const r = result.results.find((r) => r.q_id === q.id);
+          if (!r) return null;
+          return (
+            <div key={q.id} className="p-4 rounded-[var(--at-radius)]" style={{ background: "var(--at-surface)", border: `1px solid ${r.correct ? "#cfe4d6" : "#f4c4c4"}`, backgroundColor: r.correct ? "#f3faf6" : "#fef2f2" }}>
+              <div className="flex items-start gap-2 mb-3">
+                <div className="grid place-items-center shrink-0 rounded-full mt-0.5" style={{ width: 20, height: 20, background: r.correct ? "var(--at-success)" : "var(--at-danger)", color: "white" }}>
+                  {r.correct ? <Check size={11} strokeWidth={2.8} /> : <X size={11} strokeWidth={2.8} />}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-[14.5px] font-medium mb-2" style={{ color: "var(--at-text)" }}>
+                    <span className="mr-1.5" style={{ color: "var(--at-text-faint)" }}>Q{i + 1}.</span>{q.question}
                   </div>
-                  <div className="space-y-1 text-sm">
-                    {question.options.map((option, optionIndex) => (
-                      <p key={optionIndex}>{option}</p>
-                    ))}
-                  </div>
-                  <Separator />
-                  <div className="text-sm space-y-1">
-                    <p>Your answer: <span className="font-medium">{result.user_answer || "No answer"}</span></p>
-                    <p>Correct answer: <span className="font-medium">{result.correct_answer}</span></p>
-                    {question.explanation ? (
-                      <p className="text-muted-foreground">Explanation: {question.explanation}</p>
-                    ) : null}
+                  <div className="text-[13.5px] space-y-0.5" style={{ color: "var(--at-text-muted)" }}>
+                    <div>Your answer: <span className="font-medium">{r.user_answer || "—"}</span></div>
+                    <div>Correct: <span className="font-medium" style={{ color: "var(--at-success)" }}>{r.correct_answer}</span></div>
+                    {q.explanation && <div className="mt-1.5" style={{ color: "var(--at-text-faint)" }}>{q.explanation}</div>}
                   </div>
                 </div>
-              );
-            })}
-          </CardContent>
-        </Card>
-
-        <div className="flex gap-2">
-          <Link href="/">
-            <Button className="transition-transform duration-150 active:scale-95">Back to Generate</Button>
-          </Link>
-          <Button
-            type="button"
-            variant="outline"
-            className="transition-transform duration-150 active:scale-95"
-            onClick={handleRetryQuiz}
-          >
-            Retry Quiz
-          </Button>
-        </div>
+                <Pill tone="muted">{BLOOM_LABELS[q.bloom_level] || q.bloom_level}</Pill>
+              </div>
+            </div>
+          );
+        })}
       </div>
-    );
-  }
 
-  if (!sessionStarted) {
-    return (
-      <div className="mx-auto max-w-4xl px-6 py-8 space-y-4">
-        <QuizTopActions generationId={generation.id} title={generation.title} />
-        <Card>
-          <CardHeader>
-            <CardTitle>Ready to practice</CardTitle>
-            <CardDescription>
-              {(generation.title || `Generation #${generation.id}`)} · {mcqQuestions.length} MCQ · timer starts when you begin
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button type="button" onClick={handleStartQuiz} className="transition-transform duration-150 active:scale-95">
-              Start Quiz
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="flex gap-2">
+        <button onClick={() => router.push("/history")} className="px-4 py-2 rounded-[var(--at-radius-sm)] text-[14px]" style={{ background: "var(--at-surface)", border: "1px solid var(--at-border)", color: "var(--at-text-muted)" }}>
+          Back to history
+        </button>
+        <button onClick={() => { setResult(null); setAnswers({}); setCurrentIndex(0); setStarted(false); setStartedAt(""); setElapsed(0); }}
+          className="px-4 py-2 rounded-[var(--at-radius-sm)] text-[14px] font-medium"
+          style={{ background: "var(--at-accent)", color: "var(--at-accent-contrast)" }}>
+          Try again
+        </button>
       </div>
-    );
-  }
+    </div>
+  );
+
+  // Quiz in progress
+  const answeredCount = Object.keys(answers).length;
+  const progressPct = ((currentIndex + 1) / mcqs.length) * 100;
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-8 space-y-4">
-      <QuizTopActions generationId={generation.id} title={generation.title} shouldConfirmLeave={Object.keys(answers).length > 0} />
-      <Card className="overflow-hidden border-primary/20 shadow-sm transition-all duration-200 hover:shadow-md">
-        <CardHeader>
-          <CardTitle>Quiz Practice</CardTitle>
-          <CardDescription>
-            {(generation.title || `Generation #${generation.id}`)} • Question {currentIndex + 1}/{mcqQuestions.length}
-          </CardDescription>
-          <div className="mt-2 h-2 w-full rounded-full bg-muted">
-            <div
-              className="h-full rounded-full bg-primary transition-all duration-300 ease-out"
-              style={{ width: `${((currentIndex + 1) / mcqQuestions.length) * 100}%` }}
-            />
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <Badge variant="outline">{BLOOM_LABELS[currentQuestion.bloom_level] || currentQuestion.bloom_level}</Badge>
-            <p className="text-sm text-muted-foreground">Elapsed: {formatTime(elapsedSeconds)}</p>
-          </div>
+    <div className="at-page-frame-narrow" style={{ maxWidth: 720 }}>
+      {/* Progress bar */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="text-[14px] font-medium" style={{ color: "var(--at-text-muted)" }}>
+          {currentIndex + 1} / {mcqs.length}
+        </div>
+        <div className="text-[14px]" style={{ color: "var(--at-text-faint)", fontFamily: "var(--font-geist-mono)" }}>
+          {formatTime(elapsed)}
+        </div>
+      </div>
+      <div className="rounded-full overflow-hidden mb-5" style={{ height: 4, background: "var(--at-surface-muted)", border: "1px solid var(--at-border)" }}>
+        <div style={{ width: `${progressPct}%`, height: "100%", background: "var(--at-accent)", transition: "width 0.3s ease" }} />
+      </div>
 
-          <div className="rounded-lg border p-4 space-y-3 transition-all duration-300 animate-in fade-in-0 slide-in-from-bottom-1">
-            <p className="font-medium">{currentQuestion.question}</p>
-            <div className="space-y-2">
-              {currentQuestion.options.map((option, index) => {
-                const key = String(currentQuestion.id);
-                const selected = answers[key] === toChoiceLetter(option);
-                return (
-                  <label
-                    key={index}
-                    className={`flex items-center gap-2 rounded-md border px-3 py-2 cursor-pointer transition-all duration-150 active:scale-[0.99] ${
-                      selected
-                        ? "border-primary bg-primary/10 shadow-sm ring-1 ring-primary/25"
-                        : "border-input hover:border-primary/40 hover:bg-muted/40"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name={`q-${currentQuestion.id}`}
-                      checked={selected}
-                      onChange={() => handlePickAnswer(currentQuestion, option)}
-                      className="accent-primary"
-                    />
-                    <span className="text-sm">{option}</span>
-                  </label>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <Button
-              variant="outline"
-              onClick={() => setCurrentIndex((prev) => Math.max(0, prev - 1))}
-              disabled={currentIndex === 0}
-              className="transition-transform duration-150 active:scale-95"
-            >
-              Prev
-            </Button>
-            {currentIndex === mcqQuestions.length - 1 ? (
-              <Button onClick={handleSubmit} disabled={submitting} className="transition-transform duration-150 active:scale-95">
-                {submitting ? "Submitting..." : "Submit Quiz"}
-              </Button>
-            ) : (
-              <Button
-                onClick={() => setCurrentIndex((prev) => Math.min(mcqQuestions.length - 1, prev + 1))}
-                className="transition-transform duration-150 active:scale-95"
+      {/* Question card */}
+      <div className="p-6 rounded-[var(--at-radius)] mb-4" style={{ background: "var(--at-surface)", border: "1px solid var(--at-border)" }}>
+        <div className="flex justify-between items-start mb-4">
+          <div className="min-w-0 flex-1 pr-4 text-[16px] font-medium" style={{ color: "var(--at-text)" }}>{curQ.question}</div>
+          <Pill tone="muted">{BLOOM_LABELS[curQ.bloom_level] || curQ.bloom_level}</Pill>
+        </div>
+        <div className="space-y-2">
+          {curQ.options.map((opt, oi) => {
+            const selected = answers[String(curQ.id)] === toChoiceLetter(opt);
+            return (
+              <label
+                key={oi}
+                className="flex items-center gap-3 px-4 py-3 rounded-[var(--at-radius-sm)] cursor-pointer transition-all"
+                style={{
+                  background: selected ? "var(--at-accent-soft)" : "var(--at-surface-muted)",
+                  border: `1px solid ${selected ? "var(--at-accent)" : "var(--at-border)"}`,
+                }}
               >
-                Next
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+                <input
+                  type="radio"
+                  name={`q-${curQ.id}`}
+                  checked={selected}
+                  onChange={() => setAnswers((prev) => ({ ...prev, [String(curQ.id)]: toChoiceLetter(opt) }))}
+                  className="accent-[var(--at-accent)]"
+                />
+                <span className="text-[14.5px]" style={{ color: selected ? "var(--at-accent-ink)" : "var(--at-text)" }}>{opt}</span>
+              </label>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Nav buttons */}
+      <div className="flex items-center justify-between">
+        <button
+          onClick={() => setCurrentIndex((p) => Math.max(0, p - 1))}
+          disabled={currentIndex === 0}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-[var(--at-radius-sm)] text-[14px] transition-opacity"
+          style={{ background: "var(--at-surface)", border: "1px solid var(--at-border)", color: "var(--at-text-muted)", opacity: currentIndex === 0 ? 0.4 : 1 }}
+        >
+          <ArrowLeft size={13} /> Prev
+        </button>
+
+        <div className="text-[13px]" style={{ color: "var(--at-text-faint)" }}>
+          {answeredCount} / {mcqs.length} answered
+        </div>
+
+        {currentIndex === mcqs.length - 1 ? (
+          <button
+            onClick={handleSubmit}
+            disabled={submitting}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-[var(--at-radius-sm)] text-[14px] font-medium transition-opacity"
+            style={{ background: "var(--at-accent)", color: "var(--at-accent-contrast)", opacity: submitting ? 0.7 : 1 }}
+          >
+            {submitting ? "Submitting…" : "Submit quiz"}
+          </button>
+        ) : (
+          <button
+            onClick={() => setCurrentIndex((p) => Math.min(mcqs.length - 1, p + 1))}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-[var(--at-radius-sm)] text-[14px] font-medium"
+            style={{ background: "var(--at-accent)", color: "var(--at-accent-contrast)" }}
+          >
+            Next <ArrowRight size={13} />
+          </button>
+        )}
+      </div>
+
+      {/* Question dots */}
+      <div className="flex flex-wrap gap-1.5 mt-5">
+        {mcqs.map((q, i) => (
+          <button
+            key={q.id}
+            onClick={() => setCurrentIndex(i)}
+            className="grid place-items-center rounded text-[11px] font-medium transition-all"
+            style={{
+              width: 26, height: 26,
+              background: i === currentIndex ? "var(--at-accent)" : answers[String(q.id)] ? "var(--at-accent-soft)" : "var(--at-surface-muted)",
+              border: `1px solid ${i === currentIndex ? "var(--at-accent)" : answers[String(q.id)] ? "var(--at-accent)" : "var(--at-border)"}`,
+              color: i === currentIndex ? "var(--at-accent-contrast)" : answers[String(q.id)] ? "var(--at-accent-ink)" : "var(--at-text-faint)",
+            }}
+          >
+            {i + 1}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -418,7 +294,9 @@ function QuizPageContent() {
 export default function QuizPage() {
   return (
     <ProtectedApp>
-      <QuizPageContent />
+      <AtelierShell>
+        <QuizContent />
+      </AtelierShell>
     </ProtectedApp>
   );
 }

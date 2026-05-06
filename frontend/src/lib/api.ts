@@ -80,6 +80,7 @@ export interface UserResponse {
 export interface DocumentItem {
   id: number;
   filename: string;
+  original_filename: string;
   file_type: string;
   language: string;
   raw_text: string;
@@ -111,10 +112,15 @@ export interface GenerationItem {
   id: number;
   title: string;
   document_id: number;
+  document_name?: string;
+  stored_document_name?: string;
   pattern_id: number | null;
   questions: QuestionItem[];
   status: string;
   token_usage: number;
+  provider?: string;
+  prompt_version?: string;
+  config_snapshot?: Record<string, unknown>;
   created_at: string;
 }
 
@@ -270,6 +276,31 @@ export interface QuotaCheckResult {
   error?: string;
 }
 
+export interface SettingsResponse {
+  models: {
+    gemini: string;
+    groq: string;
+    openrouter: string;
+    ollama: string;
+    openrouter_embedding: string;
+  };
+  fallback_chain: Array<{ provider: string; model: string }>;
+  openrouter: {
+    auto_free_models: boolean;
+    free_models: string[];
+  };
+  rag: {
+    chunk_size: number;
+    chunk_overlap: number;
+    retrieval_top_k_default: number;
+    evaluation_top_k: number;
+    max_upload_size_mb: number;
+  };
+  local: {
+    ollama_base: string;
+  };
+}
+
 export const api = {
   getMe(): Promise<UserResponse> {
     return request("/auth/me");
@@ -277,6 +308,10 @@ export const api = {
 
   getUsageStats(): Promise<UsageStatsData> {
     return request("/usage/");
+  },
+
+  getSettings(): Promise<SettingsResponse> {
+    return request("/settings/");
   },
 
   checkGeminiQuota(): Promise<QuotaCheckResult> {
@@ -353,6 +388,10 @@ export const api = {
 
   getPatterns(): Promise<PatternItem[]> {
     return request("/patterns/");
+  },
+
+  getPattern(id: number): Promise<PatternItem> {
+    return request(`/patterns/${id}`);
   },
 
   deletePattern(id: number): Promise<void> {

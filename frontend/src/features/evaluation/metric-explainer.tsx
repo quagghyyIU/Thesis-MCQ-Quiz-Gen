@@ -64,7 +64,7 @@ export function MetricExplainer() {
     <Card>
       <CardHeader className="cursor-pointer select-none" onClick={() => setOpen((o) => !o)}>
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-base">
+          <CardTitle className="flex items-center gap-2 text-lg">
             {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
             Metric definitions
           </CardTitle>
@@ -74,11 +74,11 @@ export function MetricExplainer() {
         </div>
       </CardHeader>
       {open && (
-        <CardContent className="space-y-3 text-sm">
+        <CardContent className="space-y-3 text-base">
           {METRICS.map((m) => (
             <div key={m.key}>
               <div className="font-medium">
-                {m.label} <span className="text-xs font-normal text-muted-foreground">({m.range})</span>
+                {m.label} <span className="text-sm font-normal text-muted-foreground">({m.range})</span>
               </div>
               <p className="text-muted-foreground">{m.description}</p>
             </div>

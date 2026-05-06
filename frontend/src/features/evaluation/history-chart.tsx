@@ -58,7 +58,7 @@ export function HistoryChart({ rows }: { rows: EvalRow[] }) {
   if (!rows.length) {
     return (
       <Card>
-        <CardContent className="py-8 text-center text-sm text-muted-foreground">
+        <CardContent className="py-8 text-center text-base text-muted-foreground">
           No history yet. Run eval at least twice to see a trend.
         </CardContent>
       </Card>
@@ -69,7 +69,7 @@ export function HistoryChart({ rows }: { rows: EvalRow[] }) {
     <Card>
       <CardHeader>
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <CardTitle className="text-base">Trend across runs</CardTitle>
+          <CardTitle className="text-lg">Trend across runs</CardTitle>
           <div className="flex flex-wrap gap-1">
             {(Object.keys(METRIC_LABELS) as MetricKey[]).map((k) => (
               <Button
@@ -89,10 +89,10 @@ export function HistoryChart({ rows }: { rows: EvalRow[] }) {
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
               <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-              <XAxis dataKey="run_id" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} />
+              <XAxis dataKey="run_id" tick={{ fontSize: 12 }} />
+              <YAxis tick={{ fontSize: 12 }} />
               <Tooltip />
-              <Legend wrapperStyle={{ fontSize: 12 }} />
+              <Legend wrapperStyle={{ fontSize: 13 }} />
               {baselines.map((b, i) => (
                 <Line
                   key={b}

@@ -27,7 +27,7 @@ export function LatestTable({ rows, runId }: { rows: EvalRow[]; runId: string | 
   if (!rows.length) {
     return (
       <Card>
-        <CardContent className="py-8 text-center text-sm text-muted-foreground">
+        <CardContent className="py-8 text-center text-base text-muted-foreground">
           No evaluation data yet. Run <code className="rounded bg-muted px-1">python -m eval.run_eval</code> to populate.
         </CardContent>
       </Card>
@@ -37,15 +37,15 @@ export function LatestTable({ rows, runId }: { rows: EvalRow[]; runId: string | 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center justify-between text-base">
+        <CardTitle className="flex items-center justify-between text-lg">
           <span>Latest run</span>
-          {runId && <span className="font-mono text-xs text-muted-foreground">{runId}</span>}
+          {runId && <span className="font-mono text-sm text-muted-foreground">{runId}</span>}
         </CardTitle>
       </CardHeader>
       <CardContent className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-base">
           <thead>
-            <tr className="border-b text-left text-xs uppercase text-muted-foreground">
+            <tr className="border-b text-left text-sm uppercase text-muted-foreground">
               <th className="py-2 pr-3">Baseline</th>
               <th className="py-2 pr-3">Provider</th>
               <th className="py-2 pr-3">Model</th>
@@ -68,7 +68,7 @@ export function LatestTable({ rows, runId }: { rows: EvalRow[]; runId: string | 
                     {r.provider}
                   </Badge>
                 </td>
-                <td className="py-2 pr-3 font-mono text-xs text-muted-foreground">{r.model}</td>
+                <td className="py-2 pr-3 font-mono text-sm text-muted-foreground">{r.model}</td>
                 <td className="py-2 pr-3 text-right tabular-nums">{r.repeats || "1"}</td>
                 <td className="py-2 pr-3 text-right tabular-nums">{fmtStd(r.recall_at_k, r.recall_at_k_std)}</td>
                 <td className="py-2 pr-3 text-right tabular-nums">{fmtStd(r.mrr, r.mrr_std)}</td>
