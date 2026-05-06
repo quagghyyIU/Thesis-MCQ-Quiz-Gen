@@ -1,5 +1,19 @@
 # Evaluation History
 
+## Run 2026-05-04T14:42:34Z
+
+| baseline | retrieval | provider | model | repeats | recall@k | mrr | grounding | confusion | answer_ok | judge | q_returned | prompt |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| full_system | dense | groq | groq:meta-llama/llama-4-scout-17b-16e-instruct (x10) | 3 | 1.000 | 1.000 | 0.879 | 0.639 | 0.994 | 4.025 | 6.00 | v1 |
+| full_system_hybrid | hybrid | groq | groq:meta-llama/llama-4-scout-17b-16e-instruct (x10) | 3 | 1.000 | 1.000 | 0.880 | 0.633 | 0.994 | 4.025 | 6.00 | v1 |
+| full_system_hybrid_rerank | hybrid_rerank | groq | groq:meta-llama/llama-4-scout-17b-16e-instruct (x10) | 3 | 1.000 | 1.000 | 0.878 | 0.628 | 0.944 | 4.250 | 6.00 | v1 |
+
+## Run 2026-05-04T14:38:14Z
+
+| baseline | retrieval | provider | model | repeats | recall@k | mrr | grounding | confusion | answer_ok | judge | q_returned | prompt |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| full_system_hybrid_rerank | hybrid_rerank | groq | groq:meta-llama/llama-4-scout-17b-16e-instruct (x2) | 1 | 1.000 | 1.000 | 0.875 | 0.583 | 1.000 | 4.000 | 6.00 | v1 |
+
 ## Run 2026-04-29T13:55:12Z
 
 | baseline | provider | model | repeats | recall@k | mrr | grounding | bloom_kl | judge | diversity | q_returned | prompt |

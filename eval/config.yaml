@@ -4,20 +4,27 @@ defaults:
   top_k: 3
   chunk_size: 2000
   chunk_overlap: 200
-  embedding_model: gemini-embedding-001
-  llm_model: gemini-2.5-flash
+  embedding_model: nvidia/llama-nemotron-embed-vl-1b-v2:free
+  llm_model: openrouter/auto-free
   llm_temperature: 0.7
   prompt_version: v1
   num_questions: 6
   question_types:
     - mcq
-  judge_model: gemini-2.5-flash
+  judge_model: openrouter/auto-free
+  retrieval_mode: dense
+  reranker_provider: openrouter
+  reranker_model: openrouter/auto-free
+  verifier_provider: openrouter
+  verifier_model: openrouter/auto-free
+  topic_confusion_gap_threshold: 0.05
 
 datasets:
   path: eval/datasets/golden.json
 
 output:
   comparison_csv: eval/results/comparison.csv
+  checkpoint_jsonl: true
 
 baselines:
   - name: baseline_vanilla
@@ -34,6 +41,20 @@ baselines:
     force_model: meta-llama/llama-4-scout-17b-16e-instruct
   - name: full_system
     mode: full_system
+    use_pattern: true
+    top_k: 3
+    force_provider: groq
+    force_model: meta-llama/llama-4-scout-17b-16e-instruct
+  - name: full_system_hybrid
+    mode: full_system
+    retrieval_mode: hybrid
+    use_pattern: true
+    top_k: 3
+    force_provider: groq
+    force_model: meta-llama/llama-4-scout-17b-16e-instruct
+  - name: full_system_hybrid_rerank
+    mode: full_system
+    retrieval_mode: hybrid_rerank
     use_pattern: true
     top_k: 3
     force_provider: groq
@@ -81,9 +102,9 @@ baselines:
     top_k: 3
     force_provider: groq
     force_model: openai/gpt-oss-120b
-  - name: model_gemini_flash
+  - name: model_openrouter_auto_free
     mode: full_system
     use_pattern: true
     top_k: 3
-    force_provider: gemini
-    force_model: gemini-2.5-flash
+    force_provider: openrouter
+    force_model: openrouter/auto-free
