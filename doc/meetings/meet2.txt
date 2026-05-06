@@ -1,0 +1,18 @@
+reranking -> rag retrieve ->
+đưa vô truy vấn -> documents nó ra được keywords / lưu ý cùng 1 topic 1 thằng nói về positive / negative
+
+đưa vô truy vấn -> cùng 1 topic, multiple keywords nhưng same semantic meaning -> ? -> làm rõ
+
+hybrid giữa Pk25 (reranking), theme topics -> đánh giá dựa trên documents schema
+
+future improvements
+
+đưa ra examples, hallu, memory forget context, topic a bị nhầm với topic b dính vào 
+
+xem cái flag có đánh giá đúng không, kiểu easy mà lúc nào cũng làm sai, task dễ trong phần khó thì vẫn là khó? human evaluation, reinforcement learning
+
+sau khi ra được ý chính, extend ra các cái khác (definition -> apply/remember) -> đánh giá ra các ideas mới
+
+dựa trên pattern đề cũ -> generate ra những câu mới (giống cũ hay mới, cùng dạng hay đổi số, tricky questions, điền vào chỗ trống) 
+
+kiểm tra xem câu hỏi + câu trả lời xem đúng chưa, có dùng máy kiểm tra chưa (human evaluate rồi)

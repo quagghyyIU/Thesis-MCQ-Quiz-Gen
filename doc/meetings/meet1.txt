@@ -1,0 +1,16 @@
+mock test, interview -> đi làm. hay hỏi về cái gì, bài toán liên quan, DB
+define rule based của user, 
+thang bloom, vấn đề: chưa thể hiện đúng mức độ, easy trong khuôn khổ nào, vận dụng dễ như nào, khó khác thế nào, showoff ra bloom, ví dụ người ta muốn deep dive
+thay vì dựa vào đó, thay đổi mức vận dụng, đưa ra những câu hỏi mới, keypoints highlights,
+
+tạo ra 1 hệ thống tường minh hơn, cần UX nhiều hơn, benchmark rõ ràng, cho phép người dùng tạo nên pattern của mình
+
+cho nó tạo dựa trên nhiều documents, phân tích 2 files với nhau, cùng 1 môn có 2 sources khác nhau chẳng hạn
+
+tạo ra được sự cohesion, expect muốn có phân bổ nhiều hơn, muốn nhiều câu hơn vào part này, 
+tạo ra nhiều mức thang metadata hơn, vận dụng hay dạng đọc hiểu, mức độ questioning difficulty, dựa vào điểm số, số sv rớt môn, tạo ra các MCQs flexible hơn nữa, người dùng cần nhiều flexible hơn
+
+showoff flexibility hơn, 
+max 3 major points / tuần , không nên làm nhiều 
+
+weekly meeting giống đi làm 
