@@ -54,6 +54,7 @@ async def create_generation(body: GenerateRequest, current_user: dict = Depends(
             language=language,
             pattern_id=body.pattern_id,
             difficulty_distribution=body.difficulty_distribution,
+            topic_focus=body.topic_focus,
         )
         cursor = db.execute(
             "INSERT INTO generations (user_id, document_id, pattern_id, status, config_snapshot, created_at) VALUES (?, ?, ?, ?, ?, ?)",
@@ -72,6 +73,7 @@ async def create_generation(body: GenerateRequest, current_user: dict = Depends(
             difficulty_distribution=body.difficulty_distribution,
             user_id=uid,
             call_type="question_generation",
+            topic_focus=body.topic_focus,
         )
         config_snapshot["llm_model_used"] = model
         with get_db() as db:
@@ -199,4 +201,9 @@ def evaluate_gen(gen_id: int, current_user: dict = Depends(get_current_user)):
             raise HTTPException(404, "Source document not found")
         doc = row_to_dict(doc_row, DOC_JSON_FIELDS)
 
-    return evaluate_generation(gen["questions"], doc["raw_text"], user_id=uid)
+    return evaluate_generation(
+        gen["questions"],
+        doc["raw_text"],
+        source_chunks=doc.get("processed_chunks") or [],
+        user_id=uid,
+    )

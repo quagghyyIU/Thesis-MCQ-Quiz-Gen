@@ -33,6 +33,7 @@ Return a JSON array of objects with this exact structure:
 [
   {
     "type": "mcq|short_answer|true_false|fill_blank|essay",
+    "topic": "A short topic label, 2-5 words",
     "question": "The question text",
     "options": ["A. ...", "B. ...", "C. ...", "D. ..."],
     "answer": "The correct answer",
@@ -63,8 +64,10 @@ def build_prompt(
     language: str,
     pattern: dict | None,
     difficulty_distribution: dict | None = None,
+    topic_focus: str | None = None,
 ) -> str:
     context = "\n\n---\n\n".join(chunks[:10])
+    max_topic_labels = 3 if num_questions <= 10 else 4
 
     parts = [
         f"## Source Material\n\n{context}",
@@ -73,6 +76,8 @@ def build_prompt(
         f"- Question types to include: {', '.join(question_types)}",
         f"- Language: {language}",
         f"- Prompt version: {VERSION}",
+        f"- Use broad topic labels; use at most {max_topic_labels} distinct topic labels for this whole set.",
+        "- Reuse the same topic label for questions that assess the same concept.",
     ]
 
     if difficulty_distribution:
@@ -87,6 +92,12 @@ def build_prompt(
         if diff_dist:
             parts.append("\n## Difficulty Distribution")
             parts.append(f"- Difficulty distribution: {json.dumps(diff_dist)}")
+
+    if topic_focus:
+        parts.append("\n## Topic Focus (MUST follow exactly)")
+        parts.append(f"- Generate every question about this topic: {topic_focus}")
+        parts.append("- Use the topic field to repeat this same short topic label.")
+        parts.append("- Do not drift to adjacent topics unless needed to explain the focused topic.")
 
     if pattern:
         config = pattern.get("pattern_config", {})

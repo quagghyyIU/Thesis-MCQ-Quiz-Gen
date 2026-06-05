@@ -97,7 +97,7 @@ export function GenerationHistory() {
     if (!selected) return;
     const text = selected.questions
       .map((q: QuestionItem, i: number) => {
-        let out = `${i + 1}. [${q.type.toUpperCase()}] [Bloom: ${q.bloom_level || "n/a"}] ${q.question}`;
+        let out = `${i + 1}. [${q.type.toUpperCase()}] [Topic: ${q.topic || "General"}] [Bloom: ${q.bloom_level || "n/a"}] ${q.question}`;
         if (q.options.length) out += "\n" + q.options.join("\n");
         out += `\nAnswer: ${q.answer}`;
         if (q.explanation) out += `\nExplanation: ${q.explanation}`;
@@ -297,6 +297,7 @@ function HistoryQuestionCard({
           {question.question}
         </p>
         <div className="flex flex-wrap gap-1 shrink-0 justify-end">
+          <Badge variant="outline">{question.topic || "General"}</Badge>
           <BloomBadge level={question.bloom_level} />
           <Badge variant="secondary">{question.type}</Badge>
           {grounding && (

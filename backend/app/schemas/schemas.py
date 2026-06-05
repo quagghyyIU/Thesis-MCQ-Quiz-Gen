@@ -17,6 +17,7 @@ class GenerateRequest(BaseModel):
     question_types: list[str] = ["mcq"]
     language: Optional[str] = None
     difficulty_distribution: Optional[dict[str, int]] = None
+    topic_focus: Optional[str] = None
 
 
 class GenerationUpdate(BaseModel):

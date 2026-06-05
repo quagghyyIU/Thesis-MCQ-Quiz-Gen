@@ -2,7 +2,9 @@
 
 import type { CSSProperties } from "react";
 import { useState, useEffect, useRef, type PointerEvent as ReactPointerEvent } from "react";
-import { api, DashboardSummary, DashboardBloomStats } from "@/lib/api";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { api, DashboardSummary, DashboardBloomStats, DashboardTopicStats } from "@/lib/api";
 
 interface TrendPoint {
   x: string;
@@ -75,9 +77,12 @@ function svgClientToView(svg: SVGSVGElement, clientX: number, clientY: number) {
 }
 
 export function DashboardScreen() {
+  const router = useRouter();
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [trend, setTrend] = useState<TrendPoint[]>([]);
   const [bloomStats, setBloomStats] = useState<DashboardBloomStats | null>(null);
+  const [topicStats, setTopicStats] = useState<DashboardTopicStats[]>([]);
+  const [generatingTopic, setGeneratingTopic] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -85,7 +90,8 @@ export function DashboardScreen() {
       api.getDashboardSummary(),
       api.getDashboardTrend(),
       api.getDashboardBloomStats(),
-    ]).then(([sum, tr, bloom]) => {
+      api.getDashboardTopicStats(),
+    ]).then(([sum, tr, bloom, topics]) => {
       setSummary(sum);
       setTrend(tr.map((row) => ({
         x: fmtDate(row.date),
@@ -97,10 +103,30 @@ export function DashboardScreen() {
         attemptId: row.attempt_id,
       })));
       setBloomStats(bloom);
+      setTopicStats(topics);
     }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
   const recent = trend.slice(-5).reverse();
+
+  const practiceTopic = async (topic: DashboardTopicStats) => {
+    if (!topic.document_id) return;
+    setGeneratingTopic(topic.topic);
+    try {
+      const generation = await api.generateQuestions({
+        document_id: topic.document_id,
+        num_questions: topic.recommended_questions || 6,
+        question_types: ["mcq"],
+        topic_focus: topic.topic,
+      });
+      toast.success(`Practice quiz created for ${topic.topic}`);
+      router.push(`/quiz/${generation.id}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to create topic practice");
+    } finally {
+      setGeneratingTopic("");
+    }
+  };
 
   return (
     <div className="at-page-frame">
@@ -228,6 +254,60 @@ export function DashboardScreen() {
             </div>
           )}
         </div>
+      </div>
+
+      <div className="mt-4 rounded-[var(--at-radius)] p-4" style={{ background: "var(--at-surface)", border: "1px solid var(--at-border)" }}>
+        <div className="mb-1 text-[14.5px] font-medium" style={{ color: "var(--at-text)" }}>Topic mastery</div>
+        <div className="mb-3 text-[13px]" style={{ color: "var(--at-text-faint)" }}>Weak topics can generate a focused practice quiz from the same source document.</div>
+        {topicStats.length === 0 && !loading ? (
+          <div className="py-5 text-center text-[14px]" style={{ color: "var(--at-text-faint)" }}>Complete a quiz attempt to unlock topic tracking.</div>
+        ) : (
+          <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-2">
+            {topicStats.map((topic) => (
+              <div key={topic.topic} className="min-w-0 rounded-[var(--at-radius-sm)] p-3" style={{ background: "var(--at-surface-muted)", border: "1px solid var(--at-border)" }}>
+                <div className="mb-2 flex min-w-0 items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="truncate text-[14px] font-medium" style={{ color: "var(--at-text)" }} title={topic.topic}>{topic.topic}</div>
+                    <div className="text-[12.5px]" style={{ color: "var(--at-text-faint)" }}>{topic.correct}/{topic.total} correct · {Math.round(topic.accuracy)}%</div>
+                  </div>
+                  <span
+                    className="shrink-0 rounded-full px-2 py-0.5 text-[11.5px] font-medium"
+                    style={{
+                      background: topic.weak ? "var(--at-danger-bg)" : "var(--at-surface)",
+                      color: topic.weak ? "var(--at-danger)" : "var(--at-success)",
+                      border: `1px solid ${topic.weak ? "var(--at-danger-border)" : "var(--at-border)"}`,
+                    }}
+                  >
+                    {topic.weak ? "Weak" : "Stable"}
+                  </span>
+                </div>
+                <div className="mb-3 rounded-full overflow-hidden" style={{ height: 6, background: "var(--at-surface)", border: "1px solid var(--at-border)" }}>
+                  <div
+                    style={{
+                      width: `${clampPercent(topic.accuracy)}%`,
+                      height: "100%",
+                      background: topic.accuracy >= 70 ? "var(--at-success)" : topic.accuracy >= 50 ? "var(--at-warning)" : "var(--at-danger)",
+                    }}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void practiceTopic(topic)}
+                  disabled={!topic.weak || generatingTopic === topic.topic}
+                  className="at-bouncy-press rounded-[var(--at-radius-sm)] px-3 py-1.5 text-[13px] font-medium"
+                  style={{
+                    background: topic.weak ? "var(--at-accent)" : "var(--at-surface)",
+                    border: `1px solid ${topic.weak ? "var(--at-accent)" : "var(--at-border)"}`,
+                    color: topic.weak ? "var(--at-accent-contrast)" : "var(--at-text-faint)",
+                    opacity: !topic.weak || generatingTopic === topic.topic ? 0.65 : 1,
+                  }}
+                >
+                  {generatingTopic === topic.topic ? "Creating..." : "Practice topic"}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

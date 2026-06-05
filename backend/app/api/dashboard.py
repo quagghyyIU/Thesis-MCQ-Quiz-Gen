@@ -1,4 +1,5 @@
 from collections import defaultdict
+import re
 
 from fastapi import APIRouter, Depends
 
@@ -10,6 +11,37 @@ router = APIRouter()
 
 ATTEMPT_JSON_FIELDS = ["answers"]
 GEN_JSON_FIELDS = ["questions"]
+
+
+def _compact_topic_labels(questions: list[dict], topic_focus: str = "") -> list[dict]:
+    if topic_focus:
+        for question in questions:
+            question["topic"] = topic_focus[:80]
+        return questions
+
+    max_topics = 3 if len(questions) <= 10 else 4
+    topic_order: list[str] = []
+    for question in questions:
+        topic = (question.get("topic") or "General").strip() or "General"
+        question["topic"] = topic
+        if topic not in topic_order:
+            topic_order.append(topic)
+
+    if len(topic_order) <= max_topics:
+        return questions
+
+    canonical = topic_order[:max_topics]
+    canonical_tokens = {
+        topic: set(re.findall(r"\b\w{3,}\b", topic.lower()))
+        for topic in canonical
+    }
+    for question in questions:
+        topic = question.get("topic") or "General"
+        if topic in canonical:
+            continue
+        tokens = set(re.findall(r"\b\w{3,}\b", topic.lower()))
+        question["topic"] = max(canonical, key=lambda candidate: len(tokens & canonical_tokens[candidate]))
+    return questions
 
 
 @router.get("/summary")
@@ -116,3 +148,75 @@ def dashboard_bloom_stats(current_user: dict = Depends(get_current_user)):
         }
         for level, values in stats.items()
     }
+
+
+@router.get("/topic-stats")
+def dashboard_topic_stats(current_user: dict = Depends(get_current_user)):
+    uid = current_user["id"]
+    stats: dict[str, dict] = {}
+
+    with get_db() as db:
+        rows = db.execute(
+            """
+            SELECT qa.*, g.questions, g.config_snapshot, g.title AS generation_title, g.document_id, g.created_at AS generation_created_at
+            FROM quiz_attempts qa
+            LEFT JOIN generations g ON g.id = qa.generation_id
+            WHERE qa.user_id = ?
+            ORDER BY qa.created_at ASC
+            """,
+            (uid,),
+        ).fetchall()
+
+    for row in rows:
+        attempt = row_to_dict(row, ["answers", "questions", "config_snapshot"])
+        answers = attempt.get("answers") or {}
+        config_snapshot = attempt.get("config_snapshot") or {}
+        questions = _compact_topic_labels(
+            attempt.get("questions") or [],
+            str(config_snapshot.get("topic_focus") or "").strip(),
+        )
+
+        for question in questions:
+            if question.get("type", "mcq") != "mcq":
+                continue
+            topic = (question.get("topic") or "General").strip() or "General"
+            entry = stats.setdefault(
+                topic,
+                {
+                    "topic": topic,
+                    "correct": 0,
+                    "total": 0,
+                    "document_id": attempt.get("document_id"),
+                    "generation_id": attempt.get("generation_id"),
+                    "generation_title": attempt.get("generation_title") or "",
+                    "latest_attempt_at": attempt.get("created_at") or "",
+                    "recommended_questions": 6,
+                },
+            )
+
+            question_id = str(question.get("id"))
+            user_answer = answers.get(question_id, "")
+            correct_answer = question.get("answer", "")
+            options = question.get("options", [])
+            entry["total"] += 1
+            if _is_mcq_correct(user_answer, correct_answer, options):
+                entry["correct"] += 1
+
+            if (attempt.get("created_at") or "") >= (entry.get("latest_attempt_at") or ""):
+                entry["document_id"] = attempt.get("document_id")
+                entry["generation_id"] = attempt.get("generation_id")
+                entry["generation_title"] = attempt.get("generation_title") or ""
+                entry["latest_attempt_at"] = attempt.get("created_at") or ""
+
+    rows_out = []
+    for entry in stats.values():
+        total = int(entry["total"])
+        correct = int(entry["correct"])
+        accuracy = round((correct / total) * 100, 2) if total else 0
+        rows_out.append({
+            **entry,
+            "accuracy": accuracy,
+            "weak": total >= 1 and accuracy < 70,
+        })
+
+    return sorted(rows_out, key=lambda item: (not item["weak"], -item["total"], item["topic"]))

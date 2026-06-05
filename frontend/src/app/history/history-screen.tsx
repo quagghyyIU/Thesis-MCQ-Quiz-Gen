@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Check, Plus, Search, Pencil, Play, X, ClipboardList } from "lucide-react";
+import { Check, Plus, Search, Pencil, Play, X, ClipboardList, ScanSearch } from "lucide-react";
 import { Pill } from "@/components/ui/pill";
 import { api, GenerationItem, QuizAttemptItem } from "@/lib/api";
 
@@ -29,6 +29,8 @@ export function HistoryScreen() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [titleDraft, setTitleDraft] = useState("");
   const [savingId, setSavingId] = useState<number | null>(null);
+  const [checkingId, setCheckingId] = useState<number | null>(null);
+  const [checkResults, setCheckResults] = useState<Record<number, Awaited<ReturnType<typeof api.evaluateGeneration>>>>({});
 
   useEffect(() => {
     Promise.all([api.getGenerations(), api.getQuizAttempts()])
@@ -63,6 +65,19 @@ export function HistoryScreen() {
       toast.error(e instanceof Error ? e.message : "Failed to save title");
     } finally {
       setSavingId(null);
+    }
+  };
+
+  const runLlmCheck = async (id: number) => {
+    setCheckingId(id);
+    try {
+      const result = await api.evaluateGeneration(id);
+      setCheckResults((prev) => ({ ...prev, [id]: result }));
+      toast.success(`Grounding: ${result.well_grounded_count}/${result.total_questions} well grounded`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "LLM check failed");
+    } finally {
+      setCheckingId(null);
     }
   };
 
@@ -148,8 +163,8 @@ export function HistoryScreen() {
       {/* Table */}
       <div className="min-w-0 overflow-x-auto rounded-[var(--at-radius)]" style={{ background: "var(--at-surface)", border: "1px solid var(--at-border)" }}>
         <div
-          className="grid min-w-[680px] px-4 py-2.5 text-[12px] font-semibold uppercase tracking-wide"
-          style={{ gridTemplateColumns: "minmax(0,2.5fr) 100px 100px 130px 86px", background: "var(--at-surface-muted)", borderBottom: "1px solid var(--at-border)", color: "var(--at-text-faint)" }}
+          className="grid min-w-[760px] px-4 py-2.5 text-[12px] font-semibold uppercase tracking-wide"
+          style={{ gridTemplateColumns: "minmax(0,2.5fr) 100px 100px 130px 132px", background: "var(--at-surface-muted)", borderBottom: "1px solid var(--at-border)", color: "var(--at-text-faint)" }}
         >
           <div>Quiz</div>
           <div>Questions</div>
@@ -168,9 +183,9 @@ export function HistoryScreen() {
         {filtered.map((g, i) => (
           <div
             key={g.id}
-            className="grid min-w-[680px] items-center px-4 py-3.5"
+            className="grid min-w-[760px] items-center px-4 py-3.5"
             style={{
-              gridTemplateColumns: "minmax(0,2.5fr) 100px 100px 130px 86px",
+              gridTemplateColumns: "minmax(0,2.5fr) 100px 100px 130px 132px",
               borderTop: i > 0 ? "1px solid var(--at-border)" : "none",
               gap: 8,
             }}
@@ -197,6 +212,9 @@ export function HistoryScreen() {
               <div className="text-[12.5px] mt-0.5 truncate" style={{ color: "var(--at-text-faint)" }}>
                 {g.document_name || `Doc #${g.document_id}`}
                 {g.provider ? ` · ${g.provider}` : ""}
+                {checkResults[g.id]
+                  ? ` · LLM ${checkResults[g.id].well_grounded_count}/${checkResults[g.id].total_questions} grounded`
+                  : ""}
               </div>
             </div>
             <div className="text-[14px]" style={{ color: "var(--at-text-muted)" }}>
@@ -242,14 +260,25 @@ export function HistoryScreen() {
                 </button>
               )}
               {editingId !== g.id && g.status === "completed" && g.questions?.length > 0 && (
-                <button
-                  onClick={() => router.push(`/quiz/${g.id}`)}
-                  className="grid place-items-center rounded-[var(--at-radius-sm)] transition-opacity hover:opacity-80"
-                  style={{ width: 30, height: 30, background: "var(--at-accent-soft)", color: "var(--at-accent-ink)", border: "1px solid var(--at-border)" }}
-                  title="Start practice"
-                >
-                  <Play size={13} />
-                </button>
+                <>
+                  <button
+                    onClick={() => void runLlmCheck(g.id)}
+                    disabled={checkingId === g.id}
+                    className="grid place-items-center rounded-[var(--at-radius-sm)] transition-opacity hover:opacity-80"
+                    style={{ width: 30, height: 30, background: "var(--at-surface-muted)", color: "var(--at-text-muted)", border: "1px solid var(--at-border)", opacity: checkingId === g.id ? 0.6 : 1 }}
+                    title="Run LLM grounding check"
+                  >
+                    <ScanSearch size={13} />
+                  </button>
+                  <button
+                    onClick={() => router.push(`/quiz/${g.id}`)}
+                    className="grid place-items-center rounded-[var(--at-radius-sm)] transition-opacity hover:opacity-80"
+                    style={{ width: 30, height: 30, background: "var(--at-accent-soft)", color: "var(--at-accent-ink)", border: "1px solid var(--at-border)" }}
+                    title="Start practice"
+                  >
+                    <Play size={13} />
+                  </button>
+                </>
               )}
             </div>
           </div>

@@ -949,7 +949,7 @@ function ReviewStep({
       .map((q, i) => {
         const options = q.options?.length ? `\n${q.options.join("\n")}` : "";
         const explanation = q.explanation ? `\nExplanation: ${q.explanation}` : "";
-        return `${i + 1}. [${q.difficulty || "n/a"} / ${q.bloom_level || "n/a"}] ${q.question}${options}\nAnswer: ${q.answer}${explanation}`;
+        return `${i + 1}. [${q.topic || "General"} / ${q.difficulty || "n/a"} / ${q.bloom_level || "n/a"}] ${q.question}${options}\nAnswer: ${q.answer}${explanation}`;
       })
       .join("\n\n");
     const blob = new Blob([text], { type: "text/plain" });
@@ -1098,6 +1098,7 @@ function ReviewStep({
                 <div className="text-[15px] font-medium" style={{ color: "var(--at-text)" }}>{q.question}</div>
               </div>
               <div className="flex gap-1.5 shrink-0">
+                <Pill tone="outline">{q.topic || "General"}</Pill>
                 {q.bloom_level && <Pill tone="muted">{q.bloom_level}</Pill>}
                 {q.difficulty && <Pill tone={q.difficulty === "easy" ? "success" : q.difficulty === "hard" ? "danger" : "warning"}>{q.difficulty}</Pill>}
               </div>

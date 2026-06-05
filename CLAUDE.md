@@ -2,15 +2,17 @@
 
 ## 1. Project Identity
 
-| Field | Value |
-|---|---|
-| Thesis title | Pattern-Aware Retrieval-Augmented Generation of Multiple-Choice Questions from Lecture Materials Using Large Language Models |
-| Short name | QuizGen |
-| Degree | Bachelor of Science in Computer Science |
-| Institution | International University — Vietnam National University Ho Chi Minh City |
-| Author | Luong Quang Huy (ITITIU22076) |
-| Primary audience | Thesis committee, academic reviewers in CS/AI/EdTech |
-| Working language | **English only** — all thesis prose must be in English |
+
+| Field            | Value                                                                                                                        |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Thesis title     | Pattern-Aware Retrieval-Augmented Generation of Multiple-Choice Questions from Lecture Materials Using Large Language Models |
+| Short name       | QuizGen                                                                                                                      |
+| Degree           | Bachelor of Science in Computer Science                                                                                      |
+| Institution      | International University — Vietnam National University Ho Chi Minh City                                                      |
+| Author           | Luong Quang Huy (ITITIU22076)                                                                                                |
+| Primary audience | Thesis committee, academic reviewers in CS/AI/EdTech                                                                         |
+| Working language | **English only** — all thesis prose must be in English                                                                       |
+
 
 ---
 
@@ -49,18 +51,20 @@ eval/
 
 ## 4. Voice and Style Rules
 
-| Rule | Detail |
-|---|---|
-| Voice | Primarily **active voice** — "The system retrieves…", "I propose…" |
-| Person | First-person singular is allowed — "In this thesis, I propose…" |
-| Tense | Present tense for system description; past tense for evaluation results |
-| Paragraph length | 3–6 sentences per paragraph; no one-sentence paragraphs |
-| Sentence length | Vary; avoid sentences over 40 words |
-| Hedging | Use hedges for claims not proven by the evaluation: "suggests", "indicates", "may" |
-| Numbers | Spell out one through nine; use numerals for 10+ and all measurements |
-| Acronyms | Define on first use: "retrieval-augmented generation (RAG)" |
-| Oxford comma | Always use |
-| Avoid | "very", "clearly", "obviously", "it is worth noting that", "in conclusion" inside body paragraphs |
+
+| Rule             | Detail                                                                                            |
+| ---------------- | ------------------------------------------------------------------------------------------------- |
+| Voice            | Primarily **active voice** — "The system retrieves…", "I propose…"                                |
+| Person           | First-person singular is allowed — "In this thesis, I propose…"                                   |
+| Tense            | Present tense for system description; past tense for evaluation results                           |
+| Paragraph length | 3–6 sentences per paragraph; no one-sentence paragraphs                                           |
+| Sentence length  | Vary; avoid sentences over 40 words                                                               |
+| Hedging          | Use hedges for claims not proven by the evaluation: "suggests", "indicates", "may"                |
+| Numbers          | Spell out one through nine; use numerals for 10+ and all measurements                             |
+| Acronyms         | Define on first use: "retrieval-augmented generation (RAG)"                                       |
+| Oxford comma     | Always use                                                                                        |
+| Avoid            | "very", "clearly", "obviously", "it is worth noting that", "in conclusion" inside body paragraphs |
+
 
 ---
 
@@ -81,6 +85,7 @@ eval/
 **BEFORE writing any new section, Claude MUST:**
 
 ### Step 1 — Read these files every time
+
 1. `doc/thesis/thesis_report_skeleton.md` — find the target section, read the bullet instructions, note the page target
 2. `doc/thesis/thesis.tex` — read the sections already written to avoid repetition and maintain consistent tone
 3. Any data files relevant to that section (see File Map above)
@@ -96,6 +101,7 @@ Questions must be **concrete and answerable**, not open-ended. Examples of good 
 > "Evaluation results show diversity drops from 0.2152 (vanilla) to 0.1711 (RAG-only). Should I explain this as a known trade-off and defend it, or flag it as a limitation?"
 
 Bad questions (do NOT ask):
+
 - "What do you want to write about in this section?"
 - "How long should this be?"
 - "Should I use formal language?"
@@ -116,38 +122,34 @@ architecture, implementation, or report content, Claude MUST follow this rule
 before making changes:
 
 1. **Search/read the codebase first.**
-   - Use repository files as the source of truth.
-   - For implementation claims, inspect the relevant files under `backend/`,
-     `frontend/`, `eval/`, and `doc/`.
-   - For thesis claims, inspect `doc/thesis/thesis.tex` and the relevant
-     supporting files in `doc/thesis/`.
-
+  - Use repository files as the source of truth.
+  - For implementation claims, inspect the relevant files under `backend/`,
+  `frontend/`, `eval/`, and `doc/`.
+  - For thesis claims, inspect `doc/thesis/thesis.tex` and the relevant
+  supporting files in `doc/thesis/`.
 2. **Do not invent data or facts.**
-   - Do not invent evaluation numbers, API behavior, features, citations,
-     screenshots, tests, limitations, or implementation details.
-   - If the information is not found in the repo or provided by the user,
-     say that it is unknown and ask for confirmation or source material.
-
+  - Do not invent evaluation numbers, API behavior, features, citations,
+   screenshots, tests, limitations, or implementation details.
+  - If the information is not found in the repo or provided by the user,
+  say that it is unknown and ask for confirmation or source material.
 3. **Ask personalized questions before deeper edits.**
-   - Before making large, subjective, high-impact, or user-personalized
-     changes, ask concrete questions that help match the user's intent.
-   - Questions should be specific to the user's thesis, project, advisor
-     expectations, target page count, preferred emphasis, and available
-     evidence.
-   - Do not make broad rewrites, add new claims, or restructure chapters
-     without confirming the intended direction first.
-
+  - Before making large, subjective, high-impact, or user-personalized
+   changes, ask concrete questions that help match the user's intent.
+  - Questions should be specific to the user's thesis, project, advisor
+  expectations, target page count, preferred emphasis, and available
+  evidence.
+  - Do not make broad rewrites, add new claims, or restructure chapters
+  without confirming the intended direction first.
 4. **Confirm change scope before editing.**
-   - Summarize the files/sections that will be changed and the reason for
-     each change.
-   - Keep edits scoped to the user's confirmed request.
-   - If new evidence is needed, ask for it instead of filling the gap with
-     plausible-sounding content.
-
+  - Summarize the files/sections that will be changed and the reason for
+   each change.
+  - Keep edits scoped to the user's confirmed request.
+  - If new evidence is needed, ask for it instead of filling the gap with
+  plausible-sounding content.
 5. **Separate evidence from assumptions.**
-   - Mark any assumption explicitly.
-   - Prefer wording such as "the repository shows..." or "the available
-     evaluation file reports..." when making factual claims.
+  - Mark any assumption explicitly.
+  - Prefer wording such as "the repository shows..." or "the available
+  evaluation file reports..." when making factual claims.
 
 ---
 
@@ -155,13 +157,15 @@ before making changes:
 
 Always pull numbers from `doc/thesis/evaluation_results.md`, not from memory.
 
-| Metric | Vanilla | RAG only | Full system |
-|---|---|---|---|
-| Semantic grounding | 0.7912 ± 0.0048 | 0.9369 ± 0.0030 | 0.9334 ± 0.0021 |
-| Bloom KL | 18.0286 ± 1.6853 | 11.6357 ± 0.9601 | 3.9054 ± 0.7817 |
-| LLM judge | 3.7833 ± 0.0946 | 4.0000 ± 0.0000 | 4.0750 ± 0.1521 |
-| Diversity | 0.2152 ± 0.0033 | 0.1711 ± 0.0031 | 0.1731 ± 0.0032 |
-| Questions returned | 6.0 ± 0.0 | 6.0 ± 0.0 | 6.0 ± 0.0 |
+
+| Metric             | Vanilla          | RAG only         | Full system     |
+| ------------------ | ---------------- | ---------------- | --------------- |
+| Semantic grounding | 0.7912 ± 0.0048  | 0.9369 ± 0.0030  | 0.9334 ± 0.0021 |
+| Bloom KL           | 18.0286 ± 1.6853 | 11.6357 ± 0.9601 | 3.9054 ± 0.7817 |
+| LLM judge          | 3.7833 ± 0.0946  | 4.0000 ± 0.0000  | 4.0750 ± 0.1521 |
+| Diversity          | 0.2152 ± 0.0033  | 0.1711 ± 0.0031  | 0.1731 ± 0.0032 |
+| Questions returned | 6.0 ± 0.0        | 6.0 ± 0.0        | 6.0 ± 0.0       |
+
 
 ---
 
@@ -174,4 +178,5 @@ Always pull numbers from `doc/thesis/evaluation_results.md`, not from memory.
 - Do **not** skip the Step 1 file reads even if the section seems simple
 - Do **not** write more than one section per turn without user confirmation
 - Do **not** make broad project or thesis changes without first searching the
-  codebase and confirming the change scope with the user
+codebase and confirming the change scope with the user
+

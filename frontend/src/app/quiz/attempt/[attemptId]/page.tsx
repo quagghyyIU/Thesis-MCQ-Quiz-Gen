@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Check, X } from "lucide-react";
+import { Check, ScanSearch, X } from "lucide-react";
 import { Pill } from "@/components/ui/pill";
 import { AtelierShell } from "@/components/atelier-shell";
 import { ProtectedApp } from "@/components/protected-app";
@@ -26,6 +26,8 @@ function ReviewContent() {
   const validAttemptId = Number.isFinite(attemptId) && attemptId > 0;
   const [loading, setLoading] = useState(validAttemptId);
   const [attempt, setAttempt] = useState<QuizAttemptDetail | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [evalResult, setEvalResult] = useState<Awaited<ReturnType<typeof api.evaluateGeneration>> | null>(null);
 
   useEffect(() => {
     if (!validAttemptId) return;
@@ -43,6 +45,21 @@ function ReviewContent() {
     }
     return Object.values(stats);
   }, [attempt]);
+
+  const runLlmCheck = async () => {
+    if (!attempt) return;
+    setChecking(true);
+    setEvalResult(null);
+    try {
+      const result = await api.evaluateGeneration(attempt.generation_id);
+      setEvalResult(result);
+      toast.success(`Grounding: ${result.well_grounded_count}/${result.total_questions} well grounded`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "LLM check failed");
+    } finally {
+      setChecking(false);
+    }
+  };
 
   if (loading) return (
     <div className="flex items-center justify-center" style={{ minHeight: 400, color: "var(--at-text-faint)" }}>Loading…</div>
@@ -89,6 +106,39 @@ function ReviewContent() {
         </div>
       )}
 
+      <div className="mb-4 rounded-[var(--at-radius)] p-4" style={{ background: "var(--at-surface)", border: "1px solid var(--at-border)" }}>
+        <div className="flex min-w-0 items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-[14.5px] font-medium" style={{ color: "var(--at-text)" }}>LLM grounding check</div>
+            <div className="text-[12.5px] mt-0.5" style={{ color: "var(--at-text-faint)" }}>
+              Re-check whether the generated quiz is grounded in its source chunks.
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => void runLlmCheck()}
+            disabled={checking}
+            className="at-bouncy-press inline-flex shrink-0 items-center gap-1.5 rounded-[var(--at-radius-sm)] px-3 py-1.5 text-[13.5px] font-medium"
+            style={{ background: "var(--at-surface-muted)", border: "1px solid var(--at-border)", color: "var(--at-text-muted)", opacity: checking ? 0.65 : 1 }}
+          >
+            <ScanSearch size={14} /> {checking ? "Checking..." : "LLM check"}
+          </button>
+        </div>
+        {evalResult && (
+          <div className="mt-3 rounded-[var(--at-radius-sm)] p-3" style={{ background: "var(--at-surface-muted)", border: "1px solid var(--at-border)" }}>
+            <div className="text-[13.5px]" style={{ color: "var(--at-text-muted)" }}>
+              Semantic avg{" "}
+              <span className="font-semibold tabular-nums" style={{ color: "var(--at-text)" }}>
+                {(evalResult.overall_score <= 1 ? evalResult.overall_score * 100 : evalResult.overall_score).toFixed(1)}%
+              </span>
+              {" · "}
+              Well grounded {evalResult.well_grounded_count}/{evalResult.total_questions} ({evalResult.well_grounded_pct}%)
+            </div>
+            <div className="mt-1 text-[12.5px]" style={{ color: "var(--at-text-faint)" }}>{evalResult.summary}</div>
+          </div>
+        )}
+      </div>
+
       {/* Questions */}
       <div className="space-y-3 mb-6">
         {attempt.results.map((r, i) => (
@@ -122,7 +172,10 @@ function ReviewContent() {
                   {r.explanation && <div className="mt-1" style={{ color: "var(--at-text-faint)" }}>{r.explanation}</div>}
                 </div>
               </div>
-              <Pill tone="muted">{BLOOM_LABELS[r.bloom_level] || r.bloom_level}</Pill>
+              <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
+                <Pill tone="outline">{r.topic || "General"}</Pill>
+                <Pill tone="muted">{BLOOM_LABELS[r.bloom_level] || r.bloom_level}</Pill>
+              </div>
             </div>
           </div>
         ))}

@@ -7,9 +7,9 @@ from app.services.embedder import embed_texts
 
 
 _METRIC_NOTE = (
-    "Hybrid metric: semantic cosine similarity (primary) plus keyword overlap baseline "
-    "between generated question/answer/explanation and the source document. It highlights "
-    "grounding risk but does not replace lecturer review."
+    "Hybrid metric: semantic cosine similarity against the best matching source chunk "
+    "(primary) plus keyword overlap baseline. It highlights grounding risk but does "
+    "not replace lecturer review."
 )
 
 
@@ -26,6 +26,27 @@ def _overlap_score(text_a: str, text_b: str) -> float:
     return len(intersection) / min(len(tokens_a), len(tokens_b))
 
 
+def _keyword_overlap_against_units(tokens: set[str], source_units: list[str]) -> tuple[float, set[str], set[str], int]:
+    best_score = 0.0
+    best_terms: set[str] = set()
+    best_unit_index = 0
+    if not tokens:
+        return 0.0, set(), set(), 0
+
+    for idx, unit in enumerate(source_units):
+        unit_tokens = _tokenize(unit)
+        if not unit_tokens:
+            continue
+        matched = tokens & unit_tokens
+        score = len(matched) / len(tokens)
+        if score > best_score:
+            best_score = score
+            best_terms = matched
+            best_unit_index = idx
+
+    return best_score, best_terms, tokens - best_terms, best_unit_index
+
+
 def _cosine_similarity(vec_a: list[float], vec_b: list[float]) -> float:
     a = np.array(vec_a, dtype=np.float32)
     b = np.array(vec_b, dtype=np.float32)
@@ -37,6 +58,7 @@ async def _evaluate_generation_async(
     questions: list[dict],
     source_text: str,
     *,
+    source_chunks: list[str] | None = None,
     user_id: int | None = None,
 ) -> dict:
     if not questions:
@@ -47,7 +69,7 @@ async def _evaluate_generation_async(
             "metric_note": _METRIC_NOTE,
         }
 
-    source_tokens = _tokenize(source_text)
+    source_units = [chunk for chunk in (source_chunks or []) if chunk.strip()] or [source_text]
     details = []
     total_semantic = 0.0
     total_keyword = 0.0
@@ -57,13 +79,10 @@ async def _evaluate_generation_async(
         for q in questions
     ]
 
-    source_embeddings = await embed_texts(
-        [source_text], user_id=user_id, call_type="accuracy_eval", db_log=True
-    )
+    source_embeddings = await embed_texts(source_units, user_id=user_id, call_type="accuracy_eval", db_log=True)
     question_embeddings = await embed_texts(
         question_payloads, user_id=user_id, call_type="accuracy_eval", db_log=True
     )
-    source_embedding = source_embeddings[0] if source_embeddings else []
 
     for index, question in enumerate(questions):
         combined = question_payloads[index]
@@ -81,22 +100,28 @@ async def _evaluate_generation_async(
             })
             continue
 
-        matched_terms = sorted(combined_tokens & source_tokens)
-        missing_terms = sorted(combined_tokens - source_tokens)
-        keyword_overlap = len(matched_terms) / len(combined_tokens)
+        keyword_overlap, matched_set, missing_set, best_keyword_idx = _keyword_overlap_against_units(
+            combined_tokens,
+            source_units,
+        )
+        matched_terms = sorted(matched_set)
+        missing_terms = sorted(missing_set)
         total_keyword += keyword_overlap
 
         semantic_score = 0.0
-        if source_embedding and index < len(question_embeddings):
-            semantic_score = max(
-                0.0,
-                min(1.0, (_cosine_similarity(question_embeddings[index], source_embedding) + 1) / 2),
-            )
+        best_semantic_idx = 0
+        if source_embeddings and index < len(question_embeddings):
+            scores = [
+                max(0.0, min(1.0, (_cosine_similarity(question_embeddings[index], source_embedding) + 1) / 2))
+                for source_embedding in source_embeddings
+            ]
+            best_semantic_idx = max(range(len(scores)), key=lambda idx: scores[idx])
+            semantic_score = scores[best_semantic_idx]
         total_semantic += semantic_score
 
         status = (
             "well_grounded"
-            if semantic_score > 0.7
+            if semantic_score >= 0.7 or (semantic_score >= 0.62 and keyword_overlap >= 0.7)
             else "partially_grounded"
             if semantic_score > 0.45
             else "poorly_grounded"
@@ -110,7 +135,7 @@ async def _evaluate_generation_async(
             "missing_terms": missing_terms[:8],
             "evidence": (
                 f"Matched {len(matched_terms)} of {len(combined_tokens)} generated content terms "
-                f"against the source document."
+                f"against source chunk {best_keyword_idx}; best semantic chunk was {best_semantic_idx}."
             ),
         })
 
@@ -134,9 +159,21 @@ async def _evaluate_generation_async(
     }
 
 
-def evaluate_generation(questions: list[dict], source_text: str, user_id: int | None = None) -> dict:
+def evaluate_generation(
+    questions: list[dict],
+    source_text: str,
+    source_chunks: list[str] | None = None,
+    user_id: int | None = None,
+) -> dict:
     try:
-        return asyncio.run(_evaluate_generation_async(questions, source_text, user_id=user_id))
+        return asyncio.run(
+            _evaluate_generation_async(
+                questions,
+                source_text,
+                source_chunks=source_chunks,
+                user_id=user_id,
+            )
+        )
     except Exception:
         if not questions:
             return {
@@ -146,7 +183,7 @@ def evaluate_generation(questions: list[dict], source_text: str, user_id: int | 
                 "metric_note": _METRIC_NOTE,
             }
 
-        source_tokens = _tokenize(source_text)
+        source_units = [chunk for chunk in (source_chunks or []) if chunk.strip()] or [source_text]
         details = []
         total_score = 0.0
         for question in questions:
@@ -162,9 +199,12 @@ def evaluate_generation(questions: list[dict], source_text: str, user_id: int | 
                     "evidence": "No usable content tokens found in generated question.",
                 })
                 continue
-            matched_terms = sorted(combined_tokens & source_tokens)
-            missing_terms = sorted(combined_tokens - source_tokens)
-            overlap = len(matched_terms) / len(combined_tokens)
+            overlap, matched_set, missing_set, best_keyword_idx = _keyword_overlap_against_units(
+                combined_tokens,
+                source_units,
+            )
+            matched_terms = sorted(matched_set)
+            missing_terms = sorted(missing_set)
             total_score += overlap
             status = "well_grounded" if overlap > 0.5 else "partially_grounded" if overlap > 0.25 else "poorly_grounded"
             details.append({
@@ -176,7 +216,7 @@ def evaluate_generation(questions: list[dict], source_text: str, user_id: int | 
                 "missing_terms": missing_terms[:8],
                 "evidence": (
                     f"Matched {len(matched_terms)} of {len(combined_tokens)} generated content terms "
-                    f"against the source document."
+                    f"against source chunk {best_keyword_idx}."
                 ),
             })
 

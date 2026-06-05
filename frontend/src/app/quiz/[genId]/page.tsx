@@ -163,7 +163,10 @@ function QuizContent() {
                     {q.explanation && <div className="mt-1.5" style={{ color: "var(--at-text-faint)" }}>{q.explanation}</div>}
                   </div>
                 </div>
-                <Pill tone="muted">{BLOOM_LABELS[q.bloom_level] || q.bloom_level}</Pill>
+                <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
+                  <Pill tone="outline">{q.topic || "General"}</Pill>
+                  <Pill tone="muted">{BLOOM_LABELS[q.bloom_level] || q.bloom_level}</Pill>
+                </div>
               </div>
             </div>
           );
@@ -206,7 +209,10 @@ function QuizContent() {
       <div className="p-6 rounded-[var(--at-radius)] mb-4" style={{ background: "var(--at-surface)", border: "1px solid var(--at-border)" }}>
         <div className="flex justify-between items-start mb-4">
           <div className="min-w-0 flex-1 pr-4 text-[16px] font-medium" style={{ color: "var(--at-text)" }}>{curQ.question}</div>
-          <Pill tone="muted">{BLOOM_LABELS[curQ.bloom_level] || curQ.bloom_level}</Pill>
+          <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
+            <Pill tone="outline">{curQ.topic || "General"}</Pill>
+            <Pill tone="muted">{BLOOM_LABELS[curQ.bloom_level] || curQ.bloom_level}</Pill>
+          </div>
         </div>
         <div className="space-y-2">
           {curQ.options.map((opt, oi) => {

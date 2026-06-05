@@ -297,7 +297,7 @@ export function QuestionGenerator() {
     if (!result) return;
     const text = result.questions
       .map((q: QuestionItem, i: number) => {
-        let out = `${i + 1}. [${q.type.toUpperCase()}] [${(q.bloom_level || "").toUpperCase()}] ${q.question}`;
+        let out = `${i + 1}. [${q.type.toUpperCase()}] [Topic: ${q.topic || "General"}] [${(q.bloom_level || "").toUpperCase()}] ${q.question}`;
         if (q.options.length) out += "\n" + q.options.join("\n");
         out += `\nAnswer: ${q.answer}`;
         if (q.explanation) out += `\nExplanation: ${q.explanation}`;
@@ -514,6 +514,7 @@ function QuestionCard({
             </span>
           )}
           {/* Bloom badge (Task 1) */}
+          <Badge variant="outline">{question.topic || "General"}</Badge>
           <BloomBadge level={question.bloom_level} />
           <Badge variant="secondary">{question.type}</Badge>
           <Badge

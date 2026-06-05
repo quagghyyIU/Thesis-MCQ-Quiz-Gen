@@ -100,6 +100,7 @@ export interface PatternItem {
 export interface QuestionItem {
   id: number;
   type: string;
+  topic: string;
   question: string;
   options: string[];
   answer: string;
@@ -141,6 +142,7 @@ export interface QuizResultItem {
   user_answer: string;
   correct_answer: string;
   bloom_level: string;
+  topic: string;
   question?: string;
   explanation?: string;
   options?: string[];
@@ -211,6 +213,19 @@ export interface DashboardBloomStats {
     total: number;
     accuracy: number;
   };
+}
+
+export interface DashboardTopicStats {
+  topic: string;
+  correct: number;
+  total: number;
+  accuracy: number;
+  weak: boolean;
+  document_id: number;
+  generation_id: number;
+  generation_title: string;
+  latest_attempt_at: string;
+  recommended_questions: number;
 }
 
 export interface UsageStatsData {
@@ -405,6 +420,7 @@ export const api = {
     question_types?: string[];
     language?: string;
     difficulty_distribution?: Record<string, number>;
+    topic_focus?: string;
   }): Promise<GenerationItem> {
     return request("/generations/", {
       method: "POST",
@@ -492,6 +508,10 @@ export const api = {
 
   getDashboardBloomStats(): Promise<DashboardBloomStats> {
     return request("/dashboard/bloom-stats");
+  },
+
+  getDashboardTopicStats(): Promise<DashboardTopicStats[]> {
+    return request("/dashboard/topic-stats");
   },
 };
 

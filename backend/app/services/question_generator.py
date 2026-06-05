@@ -43,7 +43,43 @@ BLOOM_DIFFICULTY_MAP = {
 VALID_BLOOM_LEVELS = set(BLOOM_DIFFICULTY_MAP.keys())
 
 
-def _validate_questions(questions: list) -> list[dict]:
+def _compact_topic_labels(questions: list[dict], *, topic_focus: str | None = None) -> list[dict]:
+    if topic_focus:
+        focused = topic_focus.strip() or "General"
+        for question in questions:
+            question["topic"] = focused[:80]
+        return questions
+
+    max_topics = 3 if len(questions) <= 10 else 4
+    topic_order: list[str] = []
+    for question in questions:
+        topic = question.get("topic") or "General"
+        if topic not in topic_order:
+            topic_order.append(topic)
+
+    if len(topic_order) <= max_topics:
+        return questions
+
+    canonical = topic_order[:max_topics]
+    canonical_tokens = {
+        topic: set(re.findall(r"\b\w{3,}\b", topic.lower()))
+        for topic in canonical
+    }
+
+    for question in questions:
+        topic = question.get("topic") or "General"
+        if topic in canonical:
+            continue
+        tokens = set(re.findall(r"\b\w{3,}\b", topic.lower()))
+        best = max(
+            canonical,
+            key=lambda candidate: len(tokens & canonical_tokens[candidate]),
+        )
+        question["topic"] = best
+    return questions
+
+
+def _validate_questions(questions: list, *, topic_focus: str | None = None) -> list[dict]:
     """Normalize and validate raw parsed question dicts from AI output."""
     if isinstance(questions, dict):
         for k in ("questions", "items", "data", "results"):
@@ -63,9 +99,11 @@ def _validate_questions(questions: list) -> list[dict]:
         options = q.get("options", [])
         if not isinstance(options, list):
             options = []
+        topic = str(q.get("topic") or "").strip() or "General"
         validated.append({
             "id": i + 1,
             "type": "mcq",
+            "topic": topic[:80],
             "question": q.get("question", ""),
             "options": options[:4],
             "answer": q.get("answer", ""),
@@ -73,10 +111,10 @@ def _validate_questions(questions: list) -> list[dict]:
             "difficulty": q.get("difficulty", "medium"),
             "bloom_level": bloom,
         })
-    return validated
+    return _compact_topic_labels(validated, topic_focus=topic_focus)
 
 
-def _parse_response(text: str) -> list[dict]:
+def _parse_response(text: str, *, topic_focus: str | None = None) -> list[dict]:
     """Parse LLM response to a list of question dicts. Handles various markdown/formatting issues."""
     import logging
     logger = logging.getLogger(__name__)
@@ -97,7 +135,7 @@ def _parse_response(text: str) -> list[dict]:
 
     # Strategy 1: direct parse
     try:
-        return _validate_questions(json.loads(text))
+        return _validate_questions(json.loads(text), topic_focus=topic_focus)
     except (json.JSONDecodeError, ValueError) as e:
         logger.warning(f"Strategy 1 failed: {e}")
 
@@ -131,7 +169,7 @@ def _parse_response(text: str) -> list[dict]:
         if end != -1:
             extracted = text[start:end]
             try:
-                return _validate_questions(json.loads(extracted))
+                return _validate_questions(json.loads(extracted), topic_focus=topic_focus)
             except (json.JSONDecodeError, ValueError) as e:
                 logger.warning(f"Strategy 2 failed: {e}")
 
@@ -139,7 +177,7 @@ def _parse_response(text: str) -> list[dict]:
                 cleaned = re.sub(r",\s*([\]\}])", r"\1", extracted)  # remove trailing commas
                 cleaned = re.sub(r"//.*$", "", cleaned, flags=re.MULTILINE)  # remove JS comments
                 try:
-                    return _validate_questions(json.loads(cleaned))
+                    return _validate_questions(json.loads(cleaned), topic_focus=topic_focus)
                 except (json.JSONDecodeError, ValueError) as e2:
                     logger.warning(f"Strategy 3 failed: {e2}")
 
@@ -154,7 +192,7 @@ def _parse_response(text: str) -> list[dict]:
             # Remove trailing commas before the added ']'
             candidate = re.sub(r",\s*\]", "]", candidate)
             try:
-                result = _validate_questions(json.loads(candidate))
+                result = _validate_questions(json.loads(candidate), topic_focus=topic_focus)
                 if result:
                     logger.info(f"Strategy 4 salvaged {len(result)} questions from truncated response")
                     return result
@@ -196,6 +234,7 @@ async def generate_questions(
     user_id: int | None = None,
     call_type: str = "question_generation",
     db_log: bool = True,
+    topic_focus: str | None = None,
 ) -> tuple[list[dict], str, int, str, str, str]:
     """Generate questions. Returns (questions, prompt, tokens, provider, model, prompt_version)."""
     if question_types is None:
@@ -207,11 +246,20 @@ async def generate_questions(
         max_chunks=8,
         pattern=pattern,
         difficulty_distribution=difficulty_distribution,
+        topic_focus=topic_focus,
         user_id=user_id,
         call_type="chunk_select",
         db_log=db_log,
     )
-    prompt = build_prompt_v1(relevant, num_questions, question_types, language, pattern, difficulty_distribution)
+    prompt = build_prompt_v1(
+        relevant,
+        num_questions,
+        question_types,
+        language,
+        pattern,
+        difficulty_distribution,
+        topic_focus=topic_focus,
+    )
 
     cache_key = hashlib.md5(
         (prompt + f"|provider={force_provider or 'auto'}|model={force_model or 'default'}").encode()
@@ -241,7 +289,7 @@ async def generate_questions(
         result["model"],
     )
     try:
-        questions = _parse_response(raw_text)
+        questions = _parse_response(raw_text, topic_focus=topic_focus)
     except ValueError:
         repair_prompt = (
             f"{prompt}\n\n"
@@ -264,7 +312,7 @@ async def generate_questions(
             retry_result["provider"],
             retry_result["model"],
         )
-        questions = _parse_response(retry_text)
+        questions = _parse_response(retry_text, topic_focus=topic_focus)
         raw_text = retry_text
         tokens += retry_tokens
         provider = retry_provider
@@ -287,6 +335,7 @@ def build_config_snapshot(
     language: str,
     pattern_id: int | None,
     difficulty_distribution: dict | None,
+    topic_focus: str | None = None,
     top_k: int = 8,
 ) -> dict:
     return {
@@ -304,4 +353,5 @@ def build_config_snapshot(
         "language": language,
         "pattern_id": pattern_id,
         "difficulty_distribution": difficulty_distribution or {},
+        "topic_focus": topic_focus or "",
     }

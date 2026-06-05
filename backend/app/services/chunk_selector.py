@@ -17,6 +17,7 @@ async def select_relevant_chunks(
     max_chunks: int = 8,
     pattern: dict | None = None,
     difficulty_distribution: dict | None = None,
+    topic_focus: str | None = None,
     *,
     user_id: int | None = None,
     call_type: str = "chunk_select",
@@ -41,7 +42,7 @@ async def select_relevant_chunks(
     chunk_texts = [r["chunk_text"] for r in rows]
 
     if not query:
-        query = _build_retrieval_query(chunks, pattern, difficulty_distribution)
+        query = _build_retrieval_query(chunks, pattern, difficulty_distribution, topic_focus)
 
     query_vec = await embed_text(query, user_id=user_id, call_type=call_type, db_log=db_log)
     top_indices = cosine_search(query_vec, stored_vecs, top_k=max_chunks)
@@ -53,6 +54,7 @@ def _build_retrieval_query(
     chunks: list[str],
     pattern: dict | None = None,
     difficulty_distribution: dict | None = None,
+    topic_focus: str | None = None,
 ) -> str:
     """Build a content-bearing query for RAG retrieval.
 
@@ -61,6 +63,9 @@ def _build_retrieval_query(
     first document chunk.
     """
     parts: list[str] = []
+
+    if topic_focus:
+        parts.append(f"topic focus: {topic_focus}")
 
     if pattern:
         sample_questions = pattern.get("sample_questions", [])

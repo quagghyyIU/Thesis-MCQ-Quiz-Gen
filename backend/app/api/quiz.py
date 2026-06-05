@@ -118,6 +118,7 @@ def submit_quiz(body: QuizSubmitRequest, current_user: dict = Depends(get_curren
                     "user_answer": user_answer_raw,
                     "correct_answer": correct_answer_raw,
                     "bloom_level": question.get("bloom_level", ""),
+                    "topic": question.get("topic") or "General",
                 }
             )
 
@@ -203,6 +204,7 @@ def get_attempt(attempt_id: int, current_user: dict = Depends(get_current_user))
                 "user_answer": user_answer,
                 "correct_answer": correct_answer,
                 "bloom_level": question.get("bloom_level", ""),
+                "topic": question.get("topic") or "General",
                 "question": question.get("question", ""),
                 "explanation": question.get("explanation", ""),
                 "options": options,

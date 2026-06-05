@@ -46,6 +46,8 @@ const BREADCRUMB: Record<string, string> = {
   "/usage":      "Usage",
   "/evaluation": "Evaluation",
   "/settings":   "Settings",
+  "/quiz/attempt": "Attempt review",
+  "/quiz":       "Quiz practice",
 };
 
 interface AtelierShellProps {
