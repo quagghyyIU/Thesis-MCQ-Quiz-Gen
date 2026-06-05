@@ -1,6 +1,6 @@
 # QuizGen – MCQ Practice Platform (Quiz Generator + Review)
 
-AI-powered tool that generates exam-style **MCQ questions** from lecture materials while preserving the **pattern** of past exams (difficulty/style, Grounding quality).
+AI-powered tool that generates exam-style **MCQ questions** from lecture materials while preserving the **pattern** of past exams (difficulty/style, topic focus, and grounding quality).
 
 Designed for my thesis to support lecturers in rapidly creating consistent, well-grounded quizzes from existing slides or documents.
 
@@ -11,7 +11,7 @@ Designed for my thesis to support lecturers in rapidly creating consistent, well
 - **Document ingestion (RAG pipeline)**
   - Upload `PDF/DOCX/PPTX` lecture files
   - Extract, clean, and chunk text (sliding window with overlap)
-  - Generate **3072‑dim semantic embeddings** via Gemini
+  - Generate semantic embeddings via Gemini or OpenRouter, depending on configured keys
   - Store vectors in SQLite for fast semantic search
 - **Exam pattern extraction**
   - Paste a full exam paper **or upload** `PDF/DOCX/PPTX`
@@ -27,8 +27,10 @@ Designed for my thesis to support lecturers in rapidly creating consistent, well
     - Example questions from the original exam
     - Top‑k relevant chunks from documents
   - Generates new questions **(MCQ-only)** with:
+    - Broad topic labels per question
     - Difficulty + Bloom badges per question
     - Answers and explanations
+  - Optional topic-focused generation for weak-topic practice
 - **Quiz Practice Mode (web-based)**
   - From generation results/history: click **Start Quiz** to enter `/quiz/[genId]`
   - Full quiz UI: elapsed timer, next/prev, submit
@@ -38,19 +40,29 @@ Designed for my thesis to support lecturers in rapidly creating consistent, well
   - Explanation + Bloom breakdown
   - Quiz attempts are persisted in SQLite for dashboard analytics
   - Confidence trend shows score progression across stored user attempts over time
+  - Saved attempt review is available at `/quiz/attempt/[attemptId]`
 - **Grounding & hallucination detection**
-  - Measures keyword overlap between each question and source chunks
+  - Compares each question with the best matching retrieved source chunks
   - Labels questions as:
     - Grounded (green)
     - Partial (yellow)
     - Weak (red)
+  - LLM Check can be run from generation review, History, and attempt review
 - **History, export, and usage tracking**
   - Full history of named generations (including provider + model + token usage)
   - Rename generated quizzes during review or later from History
-  - Export to `.txt`
+  - Export to `.txt` with topic and Bloom metadata
   - Usage stats & API status dashboard with provider/model/call-type/status filters
   - Per-attempt fallback telemetry (success, quota, error, latency, attempt index)
-  - Quiz dashboard with attempt summary and Bloom-level performance breakdown
+  - Quiz dashboard with attempt summary, Bloom-level performance breakdown, topic mastery, and focused weak-topic practice
+- **Batch generation**
+  - Generate quiz jobs across multiple selected documents
+  - Track batch progress and open completed generation results
+- **Authentication and admin views**
+  - JWT login/register flow with per-user documents, patterns, generations, attempts, and batch jobs
+  - Admin-only evaluation dashboard for reproducible benchmark snapshots
+- **Runtime configuration visibility**
+  - Settings page shows configured models, fallback order, RAG chunking/retrieval settings, and OpenRouter free-model priority
 
 ---
 
@@ -67,9 +79,9 @@ User uploads slides ──► Chunk ──► Embed ──► Store vectors     
                               │                                          │
                     Build few‑shot prompt (pattern + examples + chunks)
                               │
-                    Global LLM Router (flat fallback chain across providers/models)
+                    Global LLM Router (Groq/Gemini/OpenRouter/Ollama fallback chain)
                               │
-                    Parse + validate questions
+                    Parse + validate questions + topic labels
                               │
                     Evaluate grounding accuracy
 ```
@@ -81,7 +93,9 @@ Key AI/ML components:
 - Retrieval-Augmented Generation (RAG)
 - Bloom’s Taxonomy–based difficulty analysis
 - LLM-based question extraction and pattern analysis
+- Topic-aware question generation and weak-topic practice loop
 - Global provider+model fallback chain for all AI calls
+- OpenRouter auto-free model fallback option
 - Per-attempt AI call logging (`provider`, `model`, `status`, `latency_ms`, `attempt_idx`)
 
 ---
@@ -92,11 +106,11 @@ Key AI/ML components:
   - Python (FastAPI)
   - SQLite (metadata + vector store)
   - PyMuPDF / docx / pptx processors
-  - Global AI router over Groq/Gemini/Ollama with automatic fallback
+  - Global AI router over Groq/Gemini/OpenRouter/Ollama with automatic fallback
 - **Frontend**
   - Next.js 16 + React 19 + shadcn/ui + Tailwind CSS 4
   - Main workflow: `Source -> Pattern -> Generate -> Review`
-  - Supporting areas: `Batch`, `History`, `Dashboard`, `Usage`, `Evaluation` (admin only)
+  - Supporting areas: `Batch`, `History`, `Dashboard`, `Usage`, `Settings`, `Evaluation` (admin only)
 
 ---
 
@@ -106,13 +120,15 @@ Key AI/ML components:
 
 - Node.js and npm
 - Python 3.10+
-- Valid **Gemini API key**
+- At least one configured AI provider key (`GROQ_API_KEY`, `GEMINI_API_KEY`, `OPENROUTER_API_KEY`) or local Ollama model
 
 ### 4.2. Setup
 
 1. Create `.env` in the `backend/` folder (see `backend/.env.example`):
   ```env
+   GROQ_API_KEY=your_key_here
    GEMINI_API_KEY=your_key_here
+   OPENROUTER_API_KEY=your_key_here
    JWT_SECRET=your-secret-at-least-32-chars
   ```
 2. Install dependencies (backend + frontend) as described in project docs (or thesis report).
@@ -120,7 +136,7 @@ Key AI/ML components:
   ```bat
    start-all.bat
   ```
-4. Open `http://localhost:3000`, **register** a user on `/login`, then use the app. All API routes except `/api/auth/`*, `/api/health`, and OpenAPI docs require a JWT.
+4. Open `http://localhost:3000`, **register** a user on `/login`, then use the app. All API routes except `/api/auth/*`, `/api/health`, and OpenAPI docs require a JWT.
 5. Verify services:
   - Backend Swagger: `http://localhost:8000/docs`
   - Frontend UI: `http://localhost:3000`
@@ -133,7 +149,7 @@ From the repo root:
 docker compose up --build
 ```
 
-Set `GEMINI_API_KEY` (and optional `GROQ_API_KEY`, `JWT_SECRET`) in your environment or a `.env` file next to `docker-compose.yml`. Data is persisted in the `quizgen-data` volume (`quizgen.db` and uploads under `/app/data` in the backend container).
+Set at least one AI provider key (`GROQ_API_KEY`, `GEMINI_API_KEY`, or `OPENROUTER_API_KEY`) plus `JWT_SECRET` in your environment or a `.env` file next to `docker-compose.yml`. Data is persisted in the `quizgen-data` volume (`quizgen.db` and uploads under `/app/data` in the backend container).
 
 ---
 
@@ -151,29 +167,40 @@ Set `GEMINI_API_KEY` (and optional `GROQ_API_KEY`, `JWT_SECRET`) in your environ
   - Run generation and move to review when complete
 4. **Review**
   - Name the generated quiz, for example `Database Fundamentals - Demo Confidence Quiz`
-  - Inspect generated MCQs, answers, explanations, Bloom labels, and grounding evidence
+  - Inspect generated MCQs, answers, explanations, topic labels, Bloom labels, and grounding evidence
   - Click **Start Quiz** to practice the generated MCQs
 5. **Practice & review (Quiz Practice Mode)**
   - Do the quiz in `/quiz/[genId]`
   - Submit to see score + Bloom breakdown
   - Review mode shows per-question correctness + explanations
+  - Reopen saved attempts from Dashboard, History, or `/quiz/attempt/[attemptId]`
 6. **Evaluate accuracy & history/export**
   - Click **Evaluate Accuracy** to see grounding scores per question
   - `History` tab: rename, open, evaluate, export, or start any completed generation
 7. **Monitor progress and fallback behavior**
-  - `Dashboard`: summary, attempt history, Bloom breakdown, and confidence trend
+  - `Dashboard`: summary, attempt history, Bloom breakdown, topic mastery, and confidence trend
   - `Usage`: provider/model/call type/status filters and token accounting
   - Filter by provider/model/call type/status
   - Inspect fallback events and model usage distribution
+8. **Batch and configuration**
+  - `Batch`: create multi-document generation jobs and track progress
+  - `Settings`: inspect model fallback order, OpenRouter free priority, and RAG configuration
 
 ---
 
-## 6. Roadmap (high level)
+## 6. Implemented Surfaces
 
-This repo is organized by phases (see `doc/roadmap/mcq_platform_roadmap.md`).
+- `/workflow` - source upload/selection, pattern setup, generation, review, export, and quiz start
+- `/history` - saved generations, rename, export, evaluate, start quiz, and attempt links
+- `/quiz/[genId]` - timed quiz practice
+- `/quiz/attempt/[attemptId]` - saved attempt review with optional LLM grounding check
+- `/batch` - multi-document batch generation jobs
+- `/dashboard` - progress, confidence trend, Bloom breakdown, topic mastery, and weak-topic practice
+- `/usage` - token/call accounting, quota check, fallback telemetry, and filters
+- `/settings` - configured models, fallback chain, RAG settings, OpenRouter free priority, and pattern management
+- `/evaluation` - admin-only evaluation snapshot/history/config dashboard
 
-- **Phase 2:** MCQ Practice Mode (done: Generate -> Start Quiz -> Submit -> Review)
-- **Phase 3:** Quiz dashboard & analytics foundation (summary + attempt history + Bloom breakdown + confidence trend)
+See `doc/roadmap/mcq_platform_roadmap.md` for the original phase plan.
 
 ---
 
@@ -183,13 +210,15 @@ This project is developed as part of my bachelor thesis on:
 
 > **Pattern-aware, RAG-based generation of exam questions from lecture materials using LLMs (Gemini) with hallucination detection.**
 
+The implementation now uses a provider-agnostic router, so Gemini is one supported provider rather than the only generation backend.
+
 If you are my advisor or reviewer, the detailed demo script is in `SHOWCASE.md`.
 
 ---
 
 ## 8. Reproducing Evaluation Results
 
-1. Ensure backend dependencies are installed and environment variables are configured (`GEMINI_API_KEY` required).
+1. Ensure backend dependencies are installed and environment variables are configured (`JWT_SECRET` plus the provider keys needed by `eval/config.yaml`, normally `GROQ_API_KEY` and/or `OPENROUTER_API_KEY`).
 2. Review reproducible run settings in `eval/config.yaml`:
   - `seed`, `top_k`, `chunk_size`, `chunk_overlap`
   - `embedding_model`, `llm_model`, `llm_temperature`
@@ -242,4 +271,3 @@ Final thesis support docs:
 - `doc/thesis/evaluation_results.md`
 - `doc/thesis/submission_checklist.md`
 - `doc/screenshots/README.md`
-
