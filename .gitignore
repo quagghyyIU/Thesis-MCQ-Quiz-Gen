@@ -65,3 +65,5 @@ eval/.cache/
 ############################
 coverage/
 .cache/
+.codex/
+tmp_slide_check*/

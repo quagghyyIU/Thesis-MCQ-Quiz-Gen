@@ -16,6 +16,7 @@ interface Config {
   patternName: string;
   questions: number;
   language: string;
+  manualDifficulty: boolean;
   dist: { easy: number; medium: number; hard: number };
 }
 
@@ -37,6 +38,32 @@ function stripFilenameExt(name: string) {
 }
 
 type DiffDist = { easy: number; medium: number; hard: number };
+
+function normalizeDifficultyDistribution(dist?: Record<string, number>): DiffDist | null {
+  if (!dist) return null;
+  const raw = {
+    easy: Number(dist.easy ?? 0),
+    medium: Number(dist.medium ?? 0),
+    hard: Number(dist.hard ?? 0),
+  };
+  const rawTotal = raw.easy + raw.medium + raw.hard;
+  if (!Number.isFinite(rawTotal) || rawTotal <= 0) return null;
+
+  const multiplier = rawTotal <= 1.01 ? 100 : 1;
+  const normalized = {
+    easy: Math.round(raw.easy * multiplier),
+    medium: Math.round(raw.medium * multiplier),
+    hard: Math.round(raw.hard * multiplier),
+  };
+  normalized.hard += 100 - (normalized.easy + normalized.medium + normalized.hard);
+  return normalized;
+}
+
+function difficultySummary(config: Config) {
+  if (config.manualDifficulty) return `${config.dist.easy}/${config.dist.medium}/${config.dist.hard} manual split`;
+  if (config.patternId) return "Pattern difficulty";
+  return "Default difficulty";
+}
 
 function pctFromTrack(track: HTMLElement, clientX: number): number {
   const r = track.getBoundingClientRect();
@@ -167,6 +194,7 @@ export function WorkflowScreen() {
     sourceId: null, sourceName: "", chunks: 0, lang: "EN",
     patternId: null, patternName: "None",
     questions: 10, language: "English",
+    manualDifficulty: false,
     dist: { easy: 40, medium: 40, hard: 20 },
   });
   const [generation, setGeneration] = useState<GenerationItem | null>(null);
@@ -542,6 +570,7 @@ function PatternStep({ config, update }: { config: Config; update: (p: Partial<C
 
   const selectedPattern = patterns.find((p) => p.id === config.patternId);
   const diffConfig = selectedPattern?.pattern_config?.difficulty_distribution as Record<string, number> | undefined;
+  const patternDist = normalizeDifficultyDistribution(diffConfig);
 
   return (
     <div className="min-w-0 overflow-x-clip">
@@ -577,7 +606,14 @@ function PatternStep({ config, update }: { config: Config; update: (p: Partial<C
               onChange={(value) => {
                 const id = value ? parseInt(value) : null;
                 const p = patterns.find((p) => p.id === id);
-                update({ patternId: id, patternName: p ? p.name : "None" });
+                const patternDist = normalizeDifficultyDistribution(
+                  p?.pattern_config?.difficulty_distribution as Record<string, number> | undefined,
+                );
+                update((current) => ({
+                  patternId: id,
+                  patternName: p ? p.name : "None",
+                  ...(!current.manualDifficulty && patternDist ? { dist: patternDist } : {}),
+                }));
               }}
             />
           </div>
@@ -627,24 +663,70 @@ function PatternStep({ config, update }: { config: Config; update: (p: Partial<C
         </div>
 
         <div className="min-w-0 p-4 rounded-[var(--at-radius)]" style={{ background: "var(--at-surface-muted)", border: "1px solid var(--at-border)" }}>
-          <div className="text-[14px] font-semibold mb-2.5" style={{ color: "var(--at-text)" }}>Difficulty distribution</div>
-          <DifficultySplitBar dist={dist} applyDist={(fn) => update((c) => ({ dist: fn(c.dist) }))} />
-          <div className="grid min-w-0 grid-cols-3 gap-2">
-            {(["easy", "medium", "hard"] as const).map((k) => (
-              <div key={k} className="p-2.5 rounded-[var(--at-radius-sm)]" style={{ background: "var(--at-surface)", border: "1px solid var(--at-border)" }}>
-                <div className="text-[11.5px] font-semibold uppercase tracking-wide mb-1"
-                  style={{ color: k === "easy" ? "var(--at-success)" : k === "medium" ? "var(--at-warning)" : "var(--at-danger)" }}>
-                  {k}
-                </div>
-                <div className="text-[18px] font-semibold tabular-nums" style={{ color: "var(--at-text)" }}>{dist[k]}</div>
+          <div className="mb-2.5 flex items-center justify-between gap-3">
+            <div className="text-[14px] font-semibold" style={{ color: "var(--at-text)" }}>Difficulty distribution</div>
+            <button
+              type="button"
+              onClick={() => update((current) => ({ manualDifficulty: !current.manualDifficulty }))}
+              className="inline-flex shrink-0 items-center gap-2 rounded-[var(--at-radius-sm)] px-2.5 py-1.5 text-[12.5px] font-medium"
+              style={{
+                background: config.manualDifficulty ? "var(--at-accent-soft)" : "var(--at-surface)",
+                border: "1px solid var(--at-border)",
+                color: config.manualDifficulty ? "var(--at-accent-ink)" : "var(--at-text-muted)",
+              }}
+            >
+              <span
+                className="grid size-4 place-items-center rounded-[4px]"
+                style={{
+                  background: config.manualDifficulty ? "var(--at-accent)" : "transparent",
+                  border: "1px solid var(--at-border-strong)",
+                  color: "var(--at-accent-contrast)",
+                }}
+              >
+                {config.manualDifficulty ? <Check size={12} strokeWidth={3} /> : null}
+              </span>
+              Manual override
+            </button>
+          </div>
+
+          {config.manualDifficulty ? (
+            <>
+              <DifficultySplitBar dist={dist} applyDist={(fn) => update((c) => ({ dist: fn(c.dist) }))} />
+              <DifficultyCards dist={dist} />
+              <div className="text-[12px] mt-2.5" style={{ color: "var(--at-text-faint)" }}>
+                Total: {dist.easy + dist.medium + dist.hard}% · Locked to 100
               </div>
-            ))}
-          </div>
-          <div className="text-[12px] mt-2.5" style={{ color: "var(--at-text-faint)" }}>
-            Total: {dist.easy + dist.medium + dist.hard}% · Locked to 100
-          </div>
+            </>
+          ) : patternDist ? (
+            <>
+              <DifficultyCards dist={patternDist} />
+              <div className="text-[12px] mt-2.5" style={{ color: "var(--at-text-faint)" }}>
+                Using selected pattern distribution
+              </div>
+            </>
+          ) : (
+            <div className="rounded-[var(--at-radius-sm)] p-3 text-[13px]" style={{ background: "var(--at-surface)", border: "1px solid var(--at-border)", color: "var(--at-text-muted)" }}>
+              {selectedPattern ? "Selected pattern has no detected difficulty split; generation will use the default prompt balance." : "No manual split selected; generation will use the default prompt balance."}
+            </div>
+          )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function DifficultyCards({ dist }: { dist: DiffDist }) {
+  return (
+    <div className="grid min-w-0 grid-cols-3 gap-2">
+      {(["easy", "medium", "hard"] as const).map((k) => (
+        <div key={k} className="p-2.5 rounded-[var(--at-radius-sm)]" style={{ background: "var(--at-surface)", border: "1px solid var(--at-border)" }}>
+          <div className="text-[11.5px] font-semibold uppercase tracking-wide mb-1"
+            style={{ color: k === "easy" ? "var(--at-success)" : k === "medium" ? "var(--at-warning)" : "var(--at-danger)" }}>
+            {k}
+          </div>
+          <div className="text-[18px] font-semibold tabular-nums" style={{ color: "var(--at-text)" }}>{dist[k]}</div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -775,7 +857,7 @@ function GenerateStep({ config, onNext }: { config: Config; onNext: (gen: Genera
         num_questions: config.questions,
         question_types: ["mcq"],
         language: config.language === "Vietnamese" ? "vi" : config.language === "English" ? "en" : undefined,
-        difficulty_distribution: config.dist,
+        difficulty_distribution: config.manualDifficulty ? config.dist : undefined,
       });
       // Poll until done
       let finished = gen;
@@ -809,7 +891,7 @@ function GenerateStep({ config, onNext }: { config: Config; onNext: (gen: Genera
         {[
           { label: "Source", value: config.sourceName || "Not selected", sub: `${config.chunks} chunks · ${config.lang}` },
           { label: "Pattern", value: config.patternName, sub: "exam style" },
-          { label: "Output", value: `${config.questions} MCQs · ${config.language}`, sub: `${config.dist.easy}/${config.dist.medium}/${config.dist.hard} split` },
+          { label: "Output", value: `${config.questions} MCQs · ${config.language}`, sub: difficultySummary(config) },
         ].map((tile) => (
           <div key={tile.label} className="min-w-0 overflow-hidden p-3 rounded-[var(--at-radius-sm)]" style={{ background: "var(--at-surface-muted)", border: "1px solid var(--at-border)" }}>
             <div className="text-[12px] font-medium uppercase tracking-wider mb-1" style={{ color: "var(--at-text-faint)" }}>{tile.label}</div>
@@ -1129,7 +1211,7 @@ function ReviewStep({
 function FlowSidebar({ step, config }: { step: number; config: Config }) {
   const sourceTitle = config.sourceName || "";
   const sourceDisplay = config.sourceName ? stripFilenameExt(config.sourceName) : "Not selected";
-  const diffDisplay = `${config.dist.easy} / ${config.dist.medium} / ${config.dist.hard}`;
+  const diffDisplay = difficultySummary(config);
 
   const rows: { label: string; value: string; valueTitle?: string }[] = [
     { label: "Source", value: sourceDisplay, valueTitle: sourceTitle || undefined },

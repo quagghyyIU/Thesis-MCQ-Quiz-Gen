@@ -300,6 +300,35 @@ select.at-select option {
   scrollbar-gutter: stable both-edges;
 }
 
+.atelier-sidebar-scroll,
+.atelier-recent-scroll {
+  scrollbar-color: color-mix(in oklab, var(--at-text-faint) 45%, transparent) transparent;
+  scrollbar-width: thin;
+}
+
+.atelier-sidebar-scroll::-webkit-scrollbar,
+.atelier-recent-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.atelier-sidebar-scroll::-webkit-scrollbar-track,
+.atelier-recent-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.atelier-sidebar-scroll::-webkit-scrollbar-thumb,
+.atelier-recent-scroll::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: content-box;
+  background-color: color-mix(in oklab, var(--at-text-faint) 45%, transparent);
+}
+
+.atelier-sidebar-scroll:hover::-webkit-scrollbar-thumb,
+.atelier-recent-scroll:hover::-webkit-scrollbar-thumb {
+  background-color: color-mix(in oklab, var(--at-text-faint) 65%, transparent);
+}
+
 @media (max-width: 900px) {
   .atelier-main-scroll {
     padding-inline: 18px;

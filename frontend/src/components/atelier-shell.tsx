@@ -102,7 +102,7 @@ export function AtelierShell({ children }: AtelierShellProps) {
     >
       {/* ── Sidebar — spacing follows frontend-atelier/shells.jsx AtelierShell ── */}
       <aside
-        className="flex min-w-0 flex-col sticky top-0 h-screen overflow-y-auto overflow-x-clip"
+        className="atelier-sidebar-scroll flex min-w-0 flex-col sticky top-0 h-screen overflow-y-auto overflow-x-clip"
         style={{
           background: "var(--at-surface-muted)",
           borderRight: "1px solid var(--at-border)",
@@ -179,7 +179,7 @@ export function AtelierShell({ children }: AtelierShellProps) {
           >
             Recent
           </div>
-          <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-x-clip overflow-y-auto">
+          <div className="atelier-recent-scroll flex min-h-0 flex-1 flex-col gap-0.5 overflow-x-clip overflow-y-auto pr-1">
             {recentLoading && (
               <div className="px-2.5 py-2 text-[12.5px]" style={{ color: "var(--at-text-faint)" }}>
                 Loading…
