@@ -1,0 +1,79 @@
+HƯỚNG DẪN CÀI ĐẶT VÀ KHỞI CHẠY HỆ THỐNG QUIZGEN
+Sinh viên: Lương Quang Huy
+MSSV: ITITIU22076
+Đề tài: QuizGen – MCQ Practice Platform (Quiz Generator + Review)
+---------------------------------------------------------
+
+1. YÊU CẦU MÔI TRƯỜNG PHÁT TRIỂN (PREREQUISITES)
+- Hệ điều hành: Windows/macOS/Linux.
+- Node.js: Phiên bản v18 trở lên (khuyên dùng v20 LTS).
+- Python: Phiên bản 3.10 trở lên.
+- Git (để quản lý mã nguồn).
+- Tài khoản và API Key của một trong các nhà cung cấp dịch vụ LLM (Google Gemini, Groq, hoặc OpenRouter) hoặc cài đặt Ollama nếu muốn chạy mô hình cục bộ (local).
+
+2. CẤU TRÚC THƯ MỤC CHÍNH CỦA MÃ NGUỒN
+- /backend: Chứa mã nguồn của Backend viết bằng FastAPI (Python) và SQLite.
+- /frontend: Chứa mã nguồn của Frontend viết bằng Next.js (React), Tailwind CSS và shadcn/ui.
+- start-all.bat: Tập lệnh chạy tự động trên Windows để dọn dẹp port và khởi chạy đồng thời Backend & Frontend.
+- docker-compose.yml: File cấu hình Docker nếu muốn triển khai qua container.
+- /eval: Chứa mã nguồn chạy đánh giá baseline và độ chính xác của mô hình (RAG, Bloom KL, LLM judge).
+
+3. HƯỚNG DẪN CÀI ĐẶT CHI TIẾT
+Bước 1: Giải nén mã nguồn
+- Giải nén file mã nguồn "ITITIU22076_LuongQuangHuy.zip" vào một thư mục trên máy tính.
+
+Bước 2: Cấu hình biến môi trường cho Backend
+- Di chuyển vào thư mục `backend/`.
+- Sao chép (copy) file `.env.example` thành file `.env`.
+- Mở file `.env` và điền các khóa API của bạn cùng với JWT_SECRET:
+  + GEMINI_API_KEY=Khóa_API_Gemini_của_bạn (khuyên dùng)
+  + GROQ_API_KEY=Khóa_API_Groq_của_bạn (nếu có)
+  + OPENROUTER_API_KEY=Khóa_API_OpenRouter_của_bạn (nếu có)
+  + JWT_SECRET=Chuỗi_bí_mật_bất_kỳ_ít_nhất_32_ký_tự (dùng để mã hóa JWT Token đăng nhập)
+
+Bước 3: Cài đặt thư viện dependencies
+- Đối với Windows, bạn có thể chạy file `start-all.bat` ở thư mục gốc. Script này sẽ tự động kiểm tra và cài đặt dependencies cho cả Backend (qua pip) và Frontend (qua npm) nếu chưa có thư mục `node_modules`.
+- Nếu cài đặt thủ công:
+  + Backend: Mở terminal tại thư mục `backend/` và chạy lệnh:
+    pip install -r requirements.txt
+  + Frontend: Mở terminal tại thư mục `frontend/` và chạy lệnh:
+    npm install
+
+4. HƯỚNG DẪN KHỞI CHẠY CHƯƠNG TRÌNH
+Cách 1: Khởi chạy nhanh bằng file Batch (Windows)
+- Tại thư mục gốc của dự án, nhấp đúp (hoặc chạy qua CMD) file `start-all.bat`.
+- Hệ thống sẽ tự động dọn dẹp các cổng 8000 và 3000 nếu đang bị chiếm dụng, cài đặt thư viện và khởi động hai server:
+  + Backend (FastAPI): Chạy trên cổng 8000 (http://localhost:8000)
+  + Frontend (Next.js): Chạy trên cổng 3000 (http://localhost:3000)
+- Trình duyệt sẽ tự động mở trang web hệ thống sau 5 giây.
+
+Cách 2: Khởi chạy thủ công bằng Terminal
+- Chạy Backend:
+  Mở một cửa sổ Terminal mới, chuyển đến thư mục `backend/` và chạy lệnh:
+  python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
+- Chạy Frontend:
+  Mở một cửa sổ Terminal mới khác, chuyển đến thư mục `frontend/` và chạy lệnh:
+  npm run dev
+- Truy cập vào địa chỉ: http://localhost:3000
+
+Cách 3: Khởi chạy bằng Docker
+- Đảm bảo máy tính đã cài đặt Docker và Docker Desktop.
+- Tạo file `.env` ở thư mục gốc (bên cạnh `docker-compose.yml`) và điền các khóa API tương tự như ở Bước 2.
+- Mở terminal tại thư mục gốc và chạy lệnh:
+  docker compose up --build
+- Hệ thống sẽ chạy trên cổng 3000 và lưu trữ cơ sở dữ liệu `quizgen.db` trong volume `quizgen-data`.
+
+5. HƯỚNG DẪN SỬ DỤNG HỆ THỐNG
+- Bước 1: Truy cập http://localhost:3000. Tại trang Đăng nhập (/login), hãy click chọn đăng ký (Register) để tạo một tài khoản mới, sau đó đăng nhập.
+- Bước 2 (Source): Tại trang Workflow, tiến hành tải lên tài liệu bài học (định dạng PDF, DOCX, PPTX). Hệ thống sẽ tự động phân tách văn bản thành các chunk 2000 từ với độ trùng lặp 200 từ, trích xuất embedding và lưu vào SQLite.
+- Bước 3 (Pattern): Lựa chọn một mẫu cấu trúc đề thi cũ hoặc tải lên file đề thi mẫu để hệ thống phân tích Bloom level và độ khó. Thiết lập số lượng câu hỏi mong muốn và điều chỉnh thanh trượt độ khó (difficulty slider).
+- Bước 4 (Generate): Xác nhận cấu hình và nhấn nút Generate để hệ thống gọi RAG kết hợp prompt hướng đối tượng tạo đề thi MCQ.
+- Bước 5 (Review & Practice): Xem kết quả câu hỏi sinh ra kèm giải thích, nhãn Bloom, độ khó và kiểm tra mức độ đối chiếu dữ liệu gốc (grounding score). Người dùng có thể nhấn "Start Quiz" để làm thử bài trắc nghiệm với giao diện thi thực tế, sau đó xem thống kê kết quả học tập ở Dashboard.
+
+6. ĐÁNH GIÁ PIPELINE (EVALUATION - DÀNH CHO ADMIN)
+- Hệ thống có tích hợp module đánh giá hiệu năng tự động nằm trong thư mục `/eval`.
+- Để chạy đánh giá baseline so sánh giữa 3 chế độ (Vanilla, RAG-only, và Full system):
+  1. Đảm bảo đã thiết lập API Key trong file `backend/.env`.
+  2. Mở terminal tại thư mục `/eval` và chạy lệnh:
+     python run_eval.py
+  3. Kết quả đánh giá (chỉ số Semantic grounding, Bloom KL divergence, LLM judge score, diversity,...) sẽ được lưu tại thư mục `eval/results/` dưới dạng các file `.csv` và `.md`. Bạn có thể xem biểu đồ trực quan tại trang Dashboard của Admin trên giao diện web.
